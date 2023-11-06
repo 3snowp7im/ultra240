@@ -77,7 +77,23 @@ namespace ultra {
       } sorted_entities;
     };
 
-    using Boundaries = VectorAllocatorList<geometry::LineSegment<float>>;
+    class Boundary : public geometry::LineSegment<float> {
+    public:
+
+      enum Flags {
+        OneWay = 0x40,
+      };
+
+      Boundary(
+        const geometry::Vector<int32_t>& p,
+        const geometry::Vector<int32_t>& q,
+        uint8_t flags
+      );
+
+      uint8_t flags;
+    };
+
+    using Boundaries = VectorAllocatorList<Boundary>;
 
     World(ResourceLoader& loader, const char* name);
 

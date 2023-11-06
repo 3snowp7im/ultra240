@@ -49,7 +49,7 @@ namespace ultra {
 
   static bool can_skip_corner_boundary(
     size_t i,
-    const geometry::LineSegment<float>& boundary
+    const World::Boundary& boundary
   ) {
     if (i == 0) {
       return boundary.p.x < boundary.q.x || boundary.p.y > boundary.q.y;
@@ -64,7 +64,7 @@ namespace ultra {
   static bool can_skip_edge_boundary(
     size_t i,
     const geometry::LineSegment<float>& edge,
-    const geometry::LineSegment<float>& boundary
+    const World::Boundary& boundary
   ) {
     if (i == 0) {
       return boundary.p.x < boundary.q.x || boundary.p.y == boundary.q.y;
@@ -114,7 +114,6 @@ namespace ultra {
     auto it = tile.collision_boxes.find(collision_box_type);
     if (it != tile.collision_boxes.end()) {
       for (const auto& pair : it->second) {
-        auto name = pair.first;
         auto box = pair.second;
         auto pos = entity.get_collision_box_position(box) + offset;
         auto pos_box = geometry::Rectangle<float>(pos, box.size);
@@ -213,9 +212,46 @@ namespace ultra {
                 const auto& edge = edges[i];
                 auto intersection = boundary.intersection(edge, epsilon);
                 if (!intersection.is_nan()) {
-                  if (intersection == edge.p || intersection == edge.q
-                      || intersection == boundary.p || intersection == boundary.q) {
+                  if (intersection == edge.p
+                      || intersection == edge.q
+                      || intersection == boundary.p
+                      || intersection == boundary.q) {
                     continue;
+                  }
+                  if (boundary.flags & World::Boundary::Flags::OneWay) {
+                    // Check to see if the current tile collision boxes
+                    // intersect with this boundary.
+                    auto& curr_boxes = last_tile.collision_boxes;
+                    auto it = curr_boxes.find(collision_box_type);
+                    bool skip = false;
+                    while (it != curr_boxes.end()) {
+                      const auto& boxes = it->second;
+                      for (auto pair : boxes) {
+                        auto box = pair.second;
+                        auto pos = entity.get_collision_box_position(box);
+                        box.position += pos;
+                        if (box.contains(p) || box.contains(q)) {
+                          skip = true;
+                          goto boxes_loop_break;
+                        }
+                        geometry::LineSegment<float> edges[] = {
+                          {pos, pos + box.size.as_x()},
+                          {pos + box.size.as_x(), pos + box.size},
+                          {pos + box.size, pos + box.size.as_y()},
+                          {pos + box.size.as_y(), pos},
+                        };
+                        for (const auto& edge: edges) {
+                          if (!boundary.intersection(edge, epsilon).is_nan()) {
+                            skip = true;
+                            goto boxes_loop_break;
+                          }
+                        }
+                      }
+                    }
+                  boxes_loop_break:
+                    if (skip) {
+                      continue;
+                    }
                   }
                   // Get closest corner to edge.
                   geometry::Vector<float> s;
@@ -273,7 +309,7 @@ namespace ultra {
                         if (pos_box.contains(q)) {
                           s = {0, corner.y - q.y};
                         } else {
-                          s = {corner.x - q.x, 0};
+                          s = {q.x - corner.x, 0};
                         }
                       }
                       break;
@@ -303,7 +339,7 @@ namespace ultra {
                         if (pos_box.contains(q)) {
                           s = {0, q.y - corner.y};
                         } else {
-                          s = {q.x - corner.x, 0};
+                          s = {corner.x - q.x, 0};
                         }
                       }
                       break;

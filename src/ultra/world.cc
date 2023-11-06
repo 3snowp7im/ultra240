@@ -41,9 +41,11 @@ namespace ultra {
     std::vector<std::vector<geometry::Vector<int32_t>>> points(
       boundaries_count
     );
+    std::vector<uint8_t> boundary_flags(boundaries_count);
     size_t lines_count = 0;
     for (int i = 0; i < boundaries_count; i++) {
       stream.seekg(boundary_offsets[i], stream.beg);
+      stream.read(reinterpret_cast<char*>(&boundary_flags[i]), sizeof(uint8_t));
       uint16_t points_count;
       stream.read(reinterpret_cast<char*>(&points_count), sizeof(uint16_t));
       points[i].resize(points_count);
@@ -54,24 +56,26 @@ namespace ultra {
       }
     }
     // Create line segments from points lists.
-    boundaries.reset(
-      new Boundaries(
-        VectorAllocator<geometry::LineSegment<float>>(lines_count)
-      )
-    );
-    for (const auto& boundary : points) {
+    boundaries.reset(new Boundaries(VectorAllocator<Boundary>(lines_count)));
+    for (uint i = 0; i < boundaries_count; i++) {
+      auto& boundary = points[i];
+      uint8_t flags = boundary_flags[i];
       auto a = boundary.cbegin();
       auto b = std::next(a);
-      while (a != boundary.cend()) {
-        boundaries->emplace_back(a->as<float>(), b->as<float>());
+      while (b != boundary.cend()) {
+        boundaries->emplace_back(*a, *b, flags);
         a++;
         b++;
-        if (b == boundary.cend()) {
-          b = boundary.cbegin();
-        }
       }
     }
   }
+
+  World::Boundary::Boundary(
+    const geometry::Vector<int32_t>& p,
+    const geometry::Vector<int32_t>& q,
+    uint8_t flags
+  ) : geometry::LineSegment<float>(p.as<float>(), q.as<float>()),
+      flags(flags) {}
 
   const World::Boundaries& World::get_boundaries() const {
     return *boundaries;
