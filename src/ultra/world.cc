@@ -70,11 +70,21 @@ namespace ultra {
     }
   }
 
+  World::Boundary::Boundary()
+    : geometry::LineSegment<float>(),
+      flags(0) {}
+
   World::Boundary::Boundary(
-    const geometry::Vector<int32_t>& p,
-    const geometry::Vector<int32_t>& q,
+    const geometry::Vector<float>& p,
+    const geometry::Vector<float>& q
+  ) : geometry::LineSegment<float>(p, q),
+      flags(0) {}
+
+  World::Boundary::Boundary(
+    const geometry::Vector<float>& p,
+    const geometry::Vector<float>& q,
     uint8_t flags
-  ) : geometry::LineSegment<float>(p.as<float>(), q.as<float>()),
+  ) : geometry::LineSegment<float>(p, q),
       flags(flags) {}
 
   const World::Boundaries& World::get_boundaries() const {

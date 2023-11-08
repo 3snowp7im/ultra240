@@ -84,9 +84,16 @@ namespace ultra {
         OneWay = 0x40,
       };
 
+      Boundary();
+
       Boundary(
-        const geometry::Vector<int32_t>& p,
-        const geometry::Vector<int32_t>& q,
+        const geometry::Vector<float>& p,
+        const geometry::Vector<float>& q
+      );
+
+      Boundary(
+        const geometry::Vector<float>& p,
+        const geometry::Vector<float>& q,
         uint8_t flags
       );
 
