@@ -731,6 +731,14 @@ namespace ultra::geometry {
         && pos.y >= position.y && pos.y <= position.y + size.y;
     }
 
+    Rectangle operator+(Vector<T> pos) {
+      return Rectangle(position + pos, size);
+    }
+
+    Rectangle operator-(Vector<T> pos) {
+      return Rectangle(position - pos, size);
+    }
+
     Vector<T> position;
 
     Vector<T> size;
