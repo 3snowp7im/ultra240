@@ -24,25 +24,32 @@ namespace ultra {
   geometry::Vector<float> Entity::get_collision_box_position(
     const Tileset::Tile::CollisionBox& box
   ) const {
+    return get_collision_box_position(position, box);
+  }
+
+  geometry::Vector<float> Entity::get_collision_box_position(
+    const geometry::Vector<float>& pos,
+    const Tileset::Tile::CollisionBox& box
+  ) const {
     if (attributes.flip_x && attributes.flip_y) {
-      return position
+      return pos
         + tileset.tile_size.as_x()
         - box.position
         - box.size;
     } else if (attributes.flip_y) {
-      return position
+      return pos
         + box.position.as_x()
         - box.position.as_y()
         - box.size.as_y();
     } else if (attributes.flip_x) {
-      return position
+      return pos
         + tileset.tile_size.as_x()
         - tileset.tile_size.as_y()
         - box.position.as_x()
         + box.position.as_y()
         - box.size.as_x();
     }
-    return position
+    return pos
       - tileset.tile_size.as_y()
       + box.position;
   }

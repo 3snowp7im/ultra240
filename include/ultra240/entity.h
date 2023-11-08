@@ -142,6 +142,11 @@ namespace ultra {
       const Tileset::Tile::CollisionBox& box
     ) const;
 
+    virtual geometry::Vector<float> get_collision_box_position(
+      const geometry::Vector<float>& pos,
+      const Tileset::Tile::CollisionBox& box
+    ) const;
+
     virtual bool animate(
       Hash<>::Type collision_box_type,
       const World::Boundaries& boundaries,
