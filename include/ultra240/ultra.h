@@ -6,4 +6,5 @@
 # define EXTERN
 #endif
 
+/** Framework entry point. */
 EXTERN int ultra_run(const char* name, int argc, const char* argv[]);

@@ -593,12 +593,12 @@ namespace ultra {
   ) {
   }
 
-  std::pair<bool, Entity::Collision> Entity::get_collision(
+  std::pair<bool, Entity::BoundaryCollision> Entity::get_boundary_collision(
     geometry::Vector<float> force,
     const Tileset::Tile::CollisionBox::NamedList& collision_boxes,
     const World::Boundaries& boundaries
   ) {
-    Collision closest = {.distance = geometry::Vector<float>::NaN()};
+    BoundaryCollision closest = {{.distance = geometry::Vector<float>::NaN()}};
     if (force.x != 0 || force.y != 0) {
       for (auto pair : collision_boxes) {
         auto name = pair.first;
@@ -1014,7 +1014,7 @@ namespace ultra {
       }
     }
     if (closest.distance.is_nan()) {
-      return std::make_pair(false, Collision{});
+      return std::make_pair(false, BoundaryCollision{});
     }
     return std::make_pair(true, closest);
   }

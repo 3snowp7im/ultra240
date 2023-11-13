@@ -1,36 +1,75 @@
 #pragma once
 
 #include <istream>
+#include <memory>
 #include <ostream>
 
 namespace ultra::file {
 
+  /** Perform module initialization. Must be called before instantiation. */
   void init();
 
+  /** Free module resources. */
   void quit();
-    
+
+  /** An input file. */
   class Input {
   public:
 
-    static Input* open(const char* path);
+    /** Open a file at the specified path for reading. */
+    Input(const char* path);
 
-    virtual ~Input() {}
+    /** Instance destructor. */
+    ~Input();
 
-    virtual std::istream& istream() = 0;
+    /**
+     * Return an istream for the opened file.
+     *
+     * Reading from a stream of a closed file results in undefined behaviour.
+     */
+    std::istream& stream();
 
-    virtual void close() = 0;
+    /** Close the file. */
+    void close();
+
+    class Impl {
+    public:
+      virtual ~Impl() {};
+    };
+
+  private:
+
+    std::unique_ptr<Impl> impl;
   };
 
+  /** An output file. */
   class Output {
   public:
 
-    static Output* open(const char* path);
+    /** Open a file at the specified path for writing. */
+    Output(const char* path);
 
-    virtual ~Output() {}
+    /** Instance destructor. */
+    ~Output();
 
-    virtual std::ostream& ostream() = 0;
+    /**
+     * Return an ostream for the opened file.
+     *
+     * Writing to an stream of a closed file results in undefined behaviour.
+     */
+    std::ostream& stream();
 
-    virtual void close() = 0;
+    /** Close the file. */
+    void close();
+
+    class Impl {
+    public:
+      virtual ~Impl() {};
+    };
+
+  private:
+
+    std::unique_ptr<Impl> impl;
   };
 
 }

@@ -4,86 +4,122 @@
 #include <ultra240/entity.h>
 #include <ultra240/event.h>
 #include <ultra240/geometry.h>
-#include <ultra240/resource_loader.h>
+#include <ultra240/path_manager.h>
 #include <ultra240/settings_manager.h>
 #include <ultra240/tileset.h>
 #include <ultra240/world.h>
 
 namespace ultra {
 
+  /** The rendering window. */
   class Window {
 
+    /** Timestamp of last render. */
     std::chrono::time_point<std::chrono::steady_clock> last_render_time;
 
+    /** Timestamp of last sample. */
     std::chrono::time_point<std::chrono::steady_clock> last_sample_time;
 
+    /** Current timestamp. */
     std::chrono::time_point<std::chrono::steady_clock> curr_time;
 
+    /** Number of frames rendered. */
     int frames_rendered = 0;
 
   public:
 
-    struct TilesetRange;
-
-    struct EntityRange;
-
-    struct BoxRange;
-
+    /** Perform module initialization. Must be called before instantiation. */
     static void init();
 
+    /** Free module resources. */
     static void quit();
 
-    static Window* create(
+    /** Internal pointer to tilesets loaded in graphics hardware. */
+    struct TilesetRange;
+
+    /** Internal pointer to entities loaded in graphics hardware. */
+    struct EntityRange;
+
+    /** Internal pointer to boxes loaded in graphics hardware. */
+    struct BoxRange;
+
+    /** Instance constructor. */
+    Window(
       const char* title,
       SettingsManager& window_settings,
       SettingsManager& controls_settings
     );
 
-    virtual ~Window() {}
+    /** Instance destructor. */
+    ~Window();
 
-    virtual void close() = 0;
+    /** Close window. */
+    void close();
 
-    virtual bool should_quit() = 0;
+    /** True if user has triggered a window close through system UI. */
+    bool should_quit();
 
-    virtual bool poll_events(Event& event) = 0;
+    /** Poll for new input events. */
+    bool poll_events(Event& event);
 
-    virtual void set_camera_position(
+    /** Set the rendering camera position. */
+    void set_camera_position(
       const geometry::Vector<float>& position
-    ) = 0;
+    );
 
-    virtual const TilesetRange* load_tilesets(
-      ResourceLoader& loader,
+    /** Load a collection of tilesets to the graphics hardware. */
+    const TilesetRange* load_tilesets(
+      PathManager& loader,
       const std::vector<const Tileset*>& tilesets
-    ) = 0;
+    );
 
-    virtual void unload_tilesets(
+    /** Unload a collection of tilesets from the graphics hardware. */
+    void unload_tilesets(
       const std::vector<const TilesetRange*>& ranges
-    ) = 0;
+    );
 
-    virtual void load_world(ResourceLoader& loader, const World& world) = 0;
+    /** Load a world to the graphics hardware. */
+    void load_world(PathManager& pm, const World& world);
 
-    virtual void unload_world() = 0;
+    /** Unload the world from the hraphics hardware. */
+    void unload_world();
 
-    virtual const TilesetRange* load_map(uint16_t index) = 0;
+    /** Load a world map for rendering. */
+    const TilesetRange* load_map(uint16_t index);
 
-    virtual const EntityRange* load_entities(
+    /** 
+     * Load a collection of entities and their associated tileset pointers
+     * to the graphics hardware.
+     */
+    const EntityRange* load_entities(
       const std::vector<const Entity*>& entities,
       const std::vector<const TilesetRange*>& tilesets
-    ) = 0;
+    );
 
-    virtual void unload_entities(
-      const std::vector<const EntityRange*>& ranges
-    ) = 0;
+    /** Unload a collection of entities from the graphics hardware. */
+    void unload_entities(const std::vector<const EntityRange*>& ranges);
 
-    virtual const BoxRange* load_boxes(
+    /** Load a collection of boxes to the graphics hardware. */
+    const BoxRange* load_boxes(
       const std::vector<geometry::Rectangle<float>>& boxes
-    ) = 0;
+    );
 
-    virtual void unload_boxes(
+    /** Unload a collection of boxes from the graphics hardware. */
+    void unload_boxes(
       const std::vector<const BoxRange*> ranges
-    ) = 0;
+    );
 
-    virtual void draw() = 0;
+    /** Render the current frame. */
+    void draw();
+
+    class Impl {
+    public:
+      virtual ~Impl() {};
+    };
+
+  private:
+
+    std::unique_ptr<Impl> impl;
 
   protected:
 

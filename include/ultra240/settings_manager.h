@@ -1,7 +1,8 @@
 #pragma once
 
-#include <ultra240/file.h>
-#include <yaml-cpp/yaml.h>
+#include <memory>
+#include <ultra240/config.h>
+#include <ultra240/path_manager.h>
 
 namespace ultra {
 
@@ -12,17 +13,26 @@ namespace ultra {
 
     static void quit();
 
-    static SettingsManager* create(const char* name);
+    SettingsManager(const PathManager& pm, const char* name);
 
-    virtual ~SettingsManager() {}
+    SettingsManager(SettingsManager& settings, const char* key);
 
-    virtual SettingsManager* manage_map(const char* key) = 0;
+    ~SettingsManager();
 
-    virtual YAML::Node operator[](const char* key) = 0;
+    config::Node operator[](const char* key);
 
-    virtual void remove(const char* key) = 0;
+    void remove(const char* key);
 
-    virtual void save() = 0;
+    void save();
+
+    class Impl {
+    public:
+      virtual ~Impl() {};
+    };
+
+  private:
+
+    std::unique_ptr<Impl> impl;
   };
 
 }

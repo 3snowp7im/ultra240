@@ -5,8 +5,7 @@ libultra_posix_la_SOURCES = \
 	dynamic_library.cc \
 	file.cc \
 	mkdirp.cc \
-	resource_loader.cc \
-	settings_manager.cc \
-	util.cc
+	path_manager.cc \
+	settings_manager.cc
 
 file.$(OBJEXT): $(BINRELOC_HEADER_FILES)

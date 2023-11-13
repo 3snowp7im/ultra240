@@ -10,6 +10,7 @@ AC_CONFIG_FILES([
   src/ultra/Makefile
   src/ultra-posix/Makefile
   src/ultra-sdl/Makefile
+  src/ultra-yaml/Makefile
   ultra240.pc
 ])
 AC_PROG_CC

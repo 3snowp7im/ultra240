@@ -8,4 +8,4 @@ Description: Game engine.
 Version: @VERSION@
 Requires: sdl2 yaml-cpp
 Cflags: -I${includedir}
-Libs: -L${libdir} -lultra -lultra-posix -lultra-sdl -ldl
+Libs: -L${libdir} -lultra -lultra-yaml -lultra-posix -lultra-sdl -ldl

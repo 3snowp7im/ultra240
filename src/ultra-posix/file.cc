@@ -4,79 +4,91 @@
 
 namespace ultra::posix::file {
 
-  class Input : public ultra::file::Input {
-    std::ifstream file;
+  using namespace ultra::file;
+
+  class InputImpl : public Input::Impl {
   public:
-    Input(const char* path);
-    ~Input();
-    std::istream& istream();
-    void close();
+
+    static InputImpl* deref(std::unique_ptr<Input::Impl>& impl) {
+      return reinterpret_cast<InputImpl*>(impl.get());
+    }
+
+    InputImpl(const char* path)
+      : stream(path) {
+      if (!stream.is_open()) {
+        throw std::runtime_error("Input: could not open " + std::string(path));
+      }
+    }
+
+    ~InputImpl() {
+      if (stream.is_open()) {
+        stream.close();
+      }
+    }
+
+    std::ifstream stream;
   };
 
-  Input::Input(const char* path) : file(path) {
-    if (!file.is_open()) {
-      throw std::runtime_error("Input: could not open " + std::string(path));
-    }
-  }
-
-  Input::~Input() {
-    if (file.is_open()) {
-      close();
-    }
-  }
-
-  std::istream& Input::istream() {
-    return file;
-  }
-
-  void Input::close() {
-    file.close();
-  }
-
-  class Output : public ultra::file::Output {
-    std::ofstream file;
+  class OutputImpl : public Output::Impl {
   public:
-    Output(const char* path);
-    ~Output();
-    std::ostream& ostream();
-    void close();
+
+    static OutputImpl*
+    deref(std::unique_ptr<Output::Impl>& impl) {
+      return reinterpret_cast<OutputImpl*>(impl.get());
+    }
+
+    OutputImpl(const char* path)
+      : stream(path) {
+      if (!stream.is_open()) {
+        throw std::runtime_error("Output: could not open " + std::string(path));
+      }
+    }
+
+    ~OutputImpl() {
+      if (stream.is_open()) {
+        stream.close();
+      }
+    }
+
+    std::ofstream stream;
   };
-
-  Output::Output(const char* path) : file(path) {
-    if (!file.is_open()) {
-      throw std::runtime_error("Output: could not open " + std::string(path));
-    }
-  }
-
-  Output::~Output() {
-    if (file.is_open()) {
-      close();
-    }
-  }
-
-  std::ostream& Output::ostream() {
-    return file;
-  }
-
-  void Output::close() {
-    file.close();
-  }
 
 }
 
 namespace ultra::file {
 
-  void init() {
-  }
+  using namespace ultra::posix::file;
+
+  void init() {}
 
   void quit() {}
 
-  Input* Input::open(const char* path) {
-    return new posix::file::Input(path);
+  Input::Input(const char* path)
+    : impl(new InputImpl(path)) {}
+
+  Input::~Input() {}
+
+  std::istream& Input::stream() {
+    auto impl = InputImpl::deref(this->impl);
+    return impl->stream;
   }
 
-  Output* Output::open(const char* path) {
-    return new posix::file::Output(path);
+  void Input::close() {
+    impl = nullptr;
+  }
+
+  Output::Output(const char* path)
+    : impl(new OutputImpl(path)) {}
+
+  Output::~Output() {}
+
+  std::ostream& Output::stream() {
+    auto impl = OutputImpl::deref(this->impl);
+    return impl->stream;
+  }
+
+  void Output::close() {
+    impl = nullptr;
   }
 
 }

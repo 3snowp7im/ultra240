@@ -1,62 +1,46 @@
-#include <memory>
+#include <ultra240/config.h>
 #include <ultra240/dynamic_library.h>
 #include <ultra240/file.h>
-#include <ultra240/resource_loader.h>
+#include <ultra240/path_manager.h>
 #include <ultra240/settings_manager.h>
 #include <ultra240/util.h>
 #include <ultra240/window.h>
-#include <yaml-cpp/yaml.h>
 
 using namespace ultra;
 
-using Main = int(Window&, ResourceLoader&);
+using Main = int(Window&, PathManager&);
 
 extern "C" int ultra_run(const char* name, int argc, const char* argv[]) {
   // Create resource loader and load the main config.
   file::init();
-  ResourceLoader::init();
-  std::shared_ptr<ResourceLoader> resources(ResourceLoader::create(name));
-  std::shared_ptr<file::Input> main_config(
-    resources->open_data("main.yaml")
-  );
-  auto config = YAML::Load(main_config->istream());
-  main_config = nullptr;
+  config::init();
+  PathManager::init();
+  PathManager pm(name);
+  config::Node config(pm.get_data_path("main.yaml").c_str());
   // Load the main module.
   DynamicLibrary::init();
-  std::shared_ptr<DynamicLibrary> main(
-    util::load_library(*resources, config["main"].as<std::string>().c_str())
-  );
+  DynamicLibrary main(pm, config["main"].to_string().c_str());
   // Create a settings manager and load the user settings.
   SettingsManager::init();
-  std::shared_ptr<SettingsManager> settings(SettingsManager::create(name));
+  SettingsManager settings(pm, name);
   // Get window settings.
-  std::shared_ptr<SettingsManager> window_settings(
-    settings->manage_map("window")
-  );
+  SettingsManager window_settings(settings, "window");
   // Get controls settings.
-  std::shared_ptr<SettingsManager> controls_settings(
-    settings->manage_map("controls")
-  );
+  SettingsManager controls_settings(settings, "controls");
   // Create the window.
-  auto title = config["title"].as<std::string>();
+  auto title = config["title"].to_string();
   Window::init();
-  std::shared_ptr<Window> window(
-    Window::create(title.c_str(), *window_settings, *controls_settings)
-  );
+  Window window(title.c_str(), window_settings, controls_settings);
   // Run the main module.
-  int ret = main->load_symbol<Main>("ultra_main")(
-    *window,
-    *resources
-  );
+  int ret = main.load_symbol<Main>("ultra_main")(window, pm);
   // Cleanup.
-  window = nullptr;
+  window.close();
   Window::quit();
-  main = nullptr;
+  main.close();
   DynamicLibrary::quit();
-  settings = nullptr;
   SettingsManager::quit();
-  resources = nullptr;
-  ResourceLoader::quit();
+  PathManager::quit();
+  config::quit();
   file::quit();
   return ret;
 }

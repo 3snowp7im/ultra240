@@ -100,6 +100,7 @@ namespace ultra {
     using Type = uint32_t;
   };
 
+  /** A compile-time CRC32 digest of the string. */
   template <char... elements>
   struct Hash<hstring<elements...>> {
     static constexpr char str[sizeof...(elements)] = {elements...};
@@ -107,6 +108,7 @@ namespace ultra {
       ~crc32<sizeof(str) - 1>(str) & 0xffffffff;
   };
 
+  /** A generic map with CRC32 digest keys. */
   template <typename T>
   using HashMap = std::map<Hash<>::Type, T>;
 

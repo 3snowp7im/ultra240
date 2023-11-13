@@ -5,10 +5,10 @@
 
 namespace ultra {
 
-  World::World(ResourceLoader& loader, const char* name) {
+  World::World(PathManager& pm, const char* name) {
     auto filename = std::string("world/") + name + ".bin";
-    std::shared_ptr<file::Input> file(loader.open_data(filename.c_str()));
-    auto& stream = file->istream();
+    file::Input file(pm.get_data_path(filename.c_str()).c_str());
+    auto& stream = file.stream();
     // Read number of maps.
     uint16_t map_count;
     stream.read(reinterpret_cast<char*>(&map_count), sizeof(uint16_t));
@@ -35,7 +35,7 @@ namespace ultra {
     maps.resize(map_count);
     for (int i = 0; i < map_count; i++) {
       stream.seekg(map_offsets[i], stream.beg);
-      maps[i].read(loader, stream);
+      maps[i].read(pm, stream);
     }
     // Read points in boundaries.
     std::vector<std::vector<geometry::Vector<int32_t>>> points(
@@ -93,7 +93,7 @@ namespace ultra {
 
   World::Map::Map() {}
 
-  void World::Map::read(ResourceLoader& loader, std::istream& stream) {
+  void World::Map::read(PathManager& pm, std::istream& stream) {
     // Read map position in world.
     stream.read(reinterpret_cast<char*>(&position.x), sizeof(int16_t));
     stream.read(reinterpret_cast<char*>(&position.y), sizeof(int16_t));
@@ -186,7 +186,7 @@ namespace ultra {
     for (int i = 0; i < map_tileset_count; i++) {
       stream.seekg(map_tileset_offsets[i], stream.beg);
       tilesets.at(map_tileset_offsets[i]).reset(new Tileset);
-      tilesets.at(map_tileset_offsets[i])->read(loader, stream);
+      tilesets.at(map_tileset_offsets[i])->read(pm, stream);
       map_tilesets[i] = tilesets.at(map_tileset_offsets[i]);
     }
     // Read entity tilesets.
@@ -195,7 +195,7 @@ namespace ultra {
       stream.seekg(entity_tileset_offsets[i], stream.beg);
       if (tilesets.at(entity_tileset_offsets[i]) == nullptr) {
         tilesets.at(entity_tileset_offsets[i]).reset(new Tileset);
-        tilesets.at(entity_tileset_offsets[i])->read(loader, stream);
+        tilesets.at(entity_tileset_offsets[i])->read(pm, stream);
       }
       entity_tilesets[i] = tilesets.at(entity_tileset_offsets[i]);
     }
