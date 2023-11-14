@@ -128,8 +128,8 @@ The following table specifies the byte sequence of entity data:
 
 | Position | Size | Description |
 | -- | -- | -- |
-| `00` | `4` | Signed X position of the point in pixels. */
-| `04` | `4` | Signed Y position of the point in pixels. */
+| `00` | `4` | Signed X position of the point in pixels. |
+| `04` | `4` | Signed Y position of the point in pixels. |
 
 Note that each point in the list of points comprising the boundary lines is
 connected to the next point in the list.
