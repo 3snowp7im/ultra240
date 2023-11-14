@@ -38,8 +38,8 @@ namespace ultra {
     uint32_t library_offset;
     stream.read(reinterpret_cast<char*>(&library_offset), sizeof(uint32_t));
     // Read number of tile data entries.
-    uint8_t tile_data_count;
-    stream.read(reinterpret_cast<char*>(&tile_data_count), sizeof(uint8_t));
+    uint16_t tile_data_count;
+    stream.read(reinterpret_cast<char*>(&tile_data_count), sizeof(uint16_t));
     // Read tile offsets.
     uint32_t tile_offsets[tile_data_count];
     for (int i = 0; i < tile_data_count; i++) {
