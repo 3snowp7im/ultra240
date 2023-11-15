@@ -97,21 +97,29 @@ namespace ultra {
     void unload_entities(const std::vector<const EntityHandle*>& handles);
 
     /**
-     * Get the underlying drawing context.
+     * Get a handle to the native window.
      *
      * The returned value is dependent on the underlying graphics implementation
      * and is therefore not portable.
      */
-    void* get_context();
+    void* get_native_window();
 
-    /** Clear the rendering context with the specified color. */
-    void clear_context(float r, float g, float b, float a);
+    /**
+     * Get the framebuffer.
+     *
+     * The returned value is dependent on the underlying graphics implementation
+     * and is therefore not portable.
+     */
+    void* get_frame_buffer();
+
+    /** Clear the framebuffer with the specified color. */
+    void clear_frame_buffer(float r, float g, float b, float a);
 
     /** Render the current frame to the context. */
     void render();
 
-    /** Draw the context to the screen. */
-    void draw_context();
+    /** Draw the framebuffer to the context. */
+    void draw_frame_buffer();
 
     class Impl {
     public:

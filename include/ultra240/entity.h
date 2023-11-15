@@ -1,14 +1,12 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
 #include <list>
 #include <memory>
 #include <ultra240/geometry.h>
 #include <ultra240/hash.h>
 #include <ultra240/tileset.h>
 #include <ultra240/world.h>
-#include <utility>
 #include <vector>
 
 namespace ultra {
@@ -26,20 +24,15 @@ namespace ultra {
      */ 
     struct AnimationControls {
 
-      /** Signal defining how the animation cycle loops. */
-      enum Cycle {
-        /** Animation does not loop. */
-        None,
-        /** Animation loops. */
-        Loop,
-      } cycle;
+      /** Flag that toggles animation looping. */
+      bool loop;
 
       /** Signal defining how animation frames advance. */
       enum Direction {
         /** Animation tiles are incremented. */
-        Forward,
+        Normal,
         /** Animation tiles are decremented. */
-        Backward,
+        Reverse,
       } direction;
 
       /** Instance compare operator. */
@@ -62,7 +55,7 @@ namespace ultra {
 
         struct {
           Hash<>::Type name;
-          Cycle cycle;
+          bool loop;
           Direction direction;
           float speed;
         } value;
@@ -78,11 +71,8 @@ namespace ultra {
         /** Enable animation looping. */
         Builder& loop();
 
-        /** Set tile incrementing. */
-        Builder& forward();
-
-        /** Set tile decrementing. */
-        Builder& backward();
+        /** Set reverse animation direction. */
+        Builder& reverse();
 
         /** Set animation speed. */
         Builder& speed(float speed);

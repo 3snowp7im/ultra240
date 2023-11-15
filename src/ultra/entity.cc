@@ -440,15 +440,15 @@ namespace ultra {
 
   Entity::AnimationControls::AnimationControls(Hash<>::Type name)
     : name(name),
-      cycle(Cycle::Loop),
-      direction(Direction::Forward),
+      loop(true),
+      direction(Direction::Normal),
       speed(1) {}
 
   bool Entity::AnimationControls::operator==(
     const AnimationControls& rhs
   ) const {
     return name == rhs.name
-      && cycle == rhs.cycle
+      && loop == rhs.loop
       && direction == rhs.direction
       && speed == rhs.speed;
   }
@@ -456,8 +456,8 @@ namespace ultra {
   Entity::AnimationControls::Builder::Builder()
     : value({
         .name = 0,
-        .cycle = Cycle::None,
-        .direction = Direction::Forward,
+        .loop = false,
+        .direction = Direction::Normal,
         .speed = 1,
       }) {}
 
@@ -469,19 +469,13 @@ namespace ultra {
 
   Entity::AnimationControls::Builder&
   Entity::AnimationControls::Builder::loop() {
-    value.cycle = Cycle::Loop;
+    value.loop = true;
     return *this;
   }
 
   Entity::AnimationControls::Builder&
-  Entity::AnimationControls::Builder::forward() {
-    value.direction = Direction::Forward;
-    return *this;
-  }
-
-  Entity::AnimationControls::Builder&
-  Entity::AnimationControls::Builder::backward() {
-    value.direction = Direction::Backward;
+  Entity::AnimationControls::Builder::reverse() {
+    value.direction = Direction::Reverse;
     return *this;
   }
 
@@ -494,7 +488,7 @@ namespace ultra {
   Entity::AnimationControls Entity::AnimationControls::Builder::build() const {
     AnimationControls animation_controls;
     animation_controls.name = value.name;
-    animation_controls.cycle = value.cycle;
+    animation_controls.loop = value.loop;
     animation_controls.direction = value.direction;
     animation_controls.speed = value.speed;
     return animation_controls;
@@ -524,10 +518,10 @@ namespace ultra {
     if (animation.tile->animation_tiles.size()) {
       animation.playing = true;
       switch (animation_controls.direction) {
-      case AnimationControls::Direction::Forward:
+      case AnimationControls::Direction::Normal:
         animation.animation_tile = animation.tile->animation_tiles.begin();
         break;
-      case AnimationControls::Direction::Backward:
+      case AnimationControls::Direction::Reverse:
         animation.animation_tile = --animation.tile->animation_tiles.end();
         break;
       }
@@ -544,31 +538,25 @@ namespace ultra {
     if (animation.playing) {
       if (animation.counter++ == animation.animation_tile->duration) {
         switch (animation.animation_controls.direction) {
-        case AnimationControls::Direction::Forward:
+        case AnimationControls::Direction::Normal:
           if (++animation.animation_tile
               == animation.tile->animation_tiles.end()) {
-            switch (animation.animation_controls.cycle) {
-            case AnimationControls::Cycle::None:
-              animation.playing = false;
-              return true;
-            case AnimationControls::Cycle::Loop:
+            if (animation.animation_controls.loop) {
               animation.animation_tile =
                 animation.tile->animation_tiles.begin();
-              break;
+            } else {
+              animation.playing = false;
             }
           }
           break;
-        case AnimationControls::Direction::Backward:
+        case AnimationControls::Direction::Reverse:
           if (animation.animation_tile--
               == animation.tile->animation_tiles.begin()) {
-            switch (animation.animation_controls.cycle) {
-            case AnimationControls::Cycle::None:
-              animation.playing = false;
-              return true;
-            case AnimationControls::Cycle::Loop:
+            if (animation.animation_controls.loop) {
               animation.animation_tile =
                 --animation.tile->animation_tiles.end();
-              break;
+            } else {
+              animation.playing = false;
             }
           }
           break;

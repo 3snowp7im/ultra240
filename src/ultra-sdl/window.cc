@@ -4,6 +4,7 @@
 #include <queue>
 #include <SDL.h>
 #include <SDL_opengl.h>
+#include <SDL_syswm.h>
 #include <set>
 #include <stdexcept>
 #include <ultra240/image.h>
@@ -869,11 +870,20 @@ namespace ultra::sdl {
       }
     }
 
-    void* get_context() {
+    void* get_native_window() {
+      // SDL_SysWMinfo window_info;
+      // SDL_VERSION(&window_info.version);
+      // if (SDL_GetWindowWMInfo(window, &window_info)) {
+      //   return reinterpret_cast<void*>(window_info.info.x11.window);
+      // }
+      return nullptr;
+    }
+
+    void* get_frame_buffer() {
       return reinterpret_cast<void*>(frame_buffer);
     }
 
-    void clear_context(float r, float g, float b, float a) {
+    void clear_frame_buffer(float r, float g, float b, float a) {
       glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer);
       glViewport(0, 0, 256, 240);
       glClearColor(r, g, b, a);
@@ -1039,7 +1049,7 @@ namespace ultra::sdl {
       );
     }
 
-    void draw_context() {
+    void draw_frame_buffer() {
       // Draw the quad.
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
       glViewport(
@@ -1426,19 +1436,26 @@ namespace ultra {
     return impl->load_entities(entities, tilesets);
   }
 
-  void Window::unload_entities(const std::vector<const EntityHandle*>& handles) {
+  void Window::unload_entities(
+    const std::vector<const EntityHandle*>& handles
+  ) {
     auto impl = WindowImpl::deref(this->impl);
     impl->unload_entities(handles);
   }
 
-  void* Window::get_context() {
+  void* Window::get_native_window() {
     auto impl = WindowImpl::deref(this->impl);
-    return impl->get_context();
+    return impl->get_native_window();
   }
 
-  void Window::clear_context(float r, float g, float b, float a) {
+  void* Window::get_frame_buffer() {
     auto impl = WindowImpl::deref(this->impl);
-    impl->clear_context(r, g, b, a);
+    return impl->get_frame_buffer();
+  }
+
+  void Window::clear_frame_buffer(float r, float g, float b, float a) {
+    auto impl = WindowImpl::deref(this->impl);
+    impl->clear_frame_buffer(r, g, b, a);
   }
 
   void Window::render() {
@@ -1449,9 +1466,9 @@ namespace ultra {
     impl->time++;
   }
 
-  void Window::draw_context() {
+  void Window::draw_frame_buffer() {
     auto impl = WindowImpl::deref(this->impl);
-    impl->draw_context();
+    impl->draw_frame_buffer();
   }
 
 }
