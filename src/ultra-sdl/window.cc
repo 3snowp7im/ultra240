@@ -49,32 +49,26 @@ namespace ultra {
 
   }
 
-  struct Window::TilesetRange {
+  struct Window::TilesetHandle {
     sdl::TextureList::iterator begin;
     size_t count;
     std::unordered_map<std::string, const sdl::Texture*> texture_map;
   };
 
-  struct Window::EntityRange {
+  struct Window::EntityHandle {
     std::list<sdl::Sprite>::iterator begin;
-    size_t count;
-  };
-
-  struct Window::BoxRange {
-    std::list<geometry::Rectangle<float>>::iterator begin;
     size_t count;
   };
 
 }
 
 // Number of data buffers.
-#define BUFFERS_COUNT  4
+#define BUFFERS_COUNT  3
 
 // Array indexes for each data buffer.
 enum {
   BUFFER_IDX_TILE,
   BUFFER_IDX_SPRITE,
-  BUFFER_IDX_BOX,
   BUFFER_IDX_QUAD,
 };
 
@@ -89,7 +83,6 @@ enum {
 };
 
 #define MAX_SPRITES  512
-#define MAX_BOXES    512
 
 namespace ultra::sdl {
 
@@ -338,18 +331,6 @@ namespace ultra::sdl {
         shader_sprite_vert_glsl,
         shader_sprite_vert_glsl_len
       );
-      GLuint box_vert_shader = glCreateShader(GL_VERTEX_SHADER);
-      if (!box_vert_shader) {
-        throw std::runtime_error(
-          "Window: could not create box vertex shader"
-        );
-      }
-      compile_shader(
-        "box vertex shader",
-        box_vert_shader,
-        shader_box_vert_glsl,
-        shader_box_vert_glsl_len
-      );
       GLuint tex_geom_shader = glCreateShader(GL_GEOMETRY_SHADER);
       if (!tex_geom_shader) {
         throw std::runtime_error(
@@ -439,16 +420,6 @@ namespace ultra::sdl {
       glAttachShader(sprite_program, tex_frag_shader);
       link_program("sprite program", sprite_program);
 
-      // Link box shader program.
-      box_program = glCreateProgram();
-      if (!box_program) {
-        throw std::runtime_error("Window: could not create box program");
-      }
-      glAttachShader(box_program, box_vert_shader);
-      glAttachShader(box_program, line_geom_shader);
-      glAttachShader(box_program, line_frag_shader);
-      link_program("line program", box_program);
-
       // Link quad shader program.
       quad_program = glCreateProgram();
       if (!quad_program) {
@@ -463,7 +434,6 @@ namespace ultra::sdl {
       glDeleteShader(sprite_vert_shader);
       glDeleteShader(tex_geom_shader);
       glDeleteShader(tex_frag_shader);
-      glDeleteShader(box_vert_shader);
       glDeleteShader(line_geom_shader);
       glDeleteShader(line_frag_shader);
       glDeleteShader(passthrough_shader);
@@ -586,16 +556,6 @@ namespace ultra::sdl {
         "tilesets"
       );
 
-      // Get box uniform locations.
-      uniform_locations.box.camera_position = glGetUniformLocation(
-        box_program,
-        "camera_position"
-      );
-      uniform_locations.box.map_position = glGetUniformLocation(
-        box_program,
-        "map_position"
-      );
-
       // Get quad uniform locations.
       uniform_locations.quad.rendered_texture = glGetUniformLocation(
         quad_program,
@@ -611,14 +571,6 @@ namespace ultra::sdl {
       glBufferData(
         GL_ARRAY_BUFFER,
         sizeof(sprite_data),
-        nullptr,
-        GL_DYNAMIC_DRAW
-      );
-      // Instantiate box buffer.
-      glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_BOX]);
-      glBufferData(
-        GL_ARRAY_BUFFER,
-        sizeof(box_data),
         nullptr,
         GL_DYNAMIC_DRAW
       );
@@ -733,7 +685,7 @@ namespace ultra::sdl {
       camera_position = position;
     }
 
-    const Window::TilesetRange* load_tilesets(
+    const Window::TilesetHandle* load_tilesets(
       PathManager& pm,
       const std::vector<const Tileset*>& tilesets
     ) {
@@ -749,24 +701,24 @@ namespace ultra::sdl {
         texture_map.insert({it->tileset->source, &*it});
         it++;
       }
-      Window::TilesetRange* range = new Window::TilesetRange {
+      Window::TilesetHandle* handle = new Window::TilesetHandle {
         .begin = begin,
         .count = tilesets.size(),
         .texture_map = texture_map,
       };
-      tileset_ranges.insert({
-        range,
-        std::unique_ptr<Window::TilesetRange>(range),
+      tileset_handles.insert({
+        handle,
+        std::unique_ptr<Window::TilesetHandle>(handle),
       });
-      return range;
+      return handle;
     }
 
     void unload_tilesets(
-      const std::vector<const Window::TilesetRange*>& ranges
+      const std::vector<const Window::TilesetHandle*>& handles
     ) {
-      for (const auto range : ranges) {
-        remove_textures(range->begin, range->count);
-        tileset_ranges.erase(range);
+      for (const auto handle : handles) {
+        remove_textures(handle->begin, handle->count);
+        tileset_handles.erase(handle);
       }
     }
 
@@ -823,17 +775,17 @@ namespace ultra::sdl {
       }
       // Compile lists of textures for each map.
       map_tile_textures.resize(world.maps.size());
-      map_tileset_ranges.resize(world.maps.size());
+      map_tileset_handles.resize(world.maps.size());
       for (int i = 0; i < world.maps.size(); i++) {
         map_tile_textures[i].clear();
-        map_tileset_ranges[i].texture_map.clear();
+        map_tileset_handles[i].texture_map.clear();
         for (int j = 0; j < world.maps[i].map_tilesets.size(); j++) {
           const auto& source = world.maps[i].map_tilesets[j]->source;
           map_tile_textures[i].push_back(texture_map[source]);
         }
         for (int j = 0; j < world.maps[i].entity_tilesets.size(); j++) {
           const auto& source = world.maps[i].entity_tilesets[j]->source;
-          map_tileset_ranges[i].texture_map.insert({
+          map_tileset_handles[i].texture_map.insert({
               world.maps[i].entity_tilesets[j]->source,
               texture_map[source]
             });
@@ -846,13 +798,13 @@ namespace ultra::sdl {
       maps = nullptr;
       // Clear tile textures.
       map_tile_textures.clear();
-      // Clear tileset ranges.
-      map_tileset_ranges.clear();
+      // Clear tileset handles.
+      map_tileset_handles.clear();
       // Delete world's textures.
       remove_textures(world_textures, world_textures_count);
     }
 
-    const Window::TilesetRange* load_map(uint16_t index) {
+    const Window::TilesetHandle* load_map(uint16_t index) {
       map_index = index;
       // Upload tile data.
       size_t map_area = maps[map_index].size.x * maps[map_index].size.y;
@@ -869,14 +821,14 @@ namespace ultra::sdl {
           &maps[map_index].layers[i].tiles[0]
         );
       }
-      return &map_tileset_ranges[index];
+      return &map_tileset_handles[index];
     }
 
-    const Window::EntityRange* load_entities(
+    const Window::EntityHandle* load_entities(
       const std::vector<const Entity*>& entities,
-      const std::vector<const Window::TilesetRange*>& tilesets
+      const std::vector<const Window::TilesetHandle*>& tilesets
     ) {
-      // Combine the texture maps of the tileset ranges.
+      // Combine the texture maps of the tileset handles.
       std::unordered_map<std::string, const Texture*> texture_map;
       for (const auto tileset : tilesets) {
         texture_map.insert(
@@ -893,68 +845,36 @@ namespace ultra::sdl {
           .texture = texture_map.at(entity->tileset.source),
         };
       }
-      Window::EntityRange* range = new Window::EntityRange {
+      Window::EntityHandle* handle = new Window::EntityHandle {
         .begin = begin,
         .count = entities.size(),
       };
-      entity_ranges.insert({
-        range,
-        std::unique_ptr<Window::EntityRange>(range),
+      entity_handles.insert({
+        handle,
+        std::unique_ptr<Window::EntityHandle>(handle),
       });
-      return range;
+      return handle;
     }
 
     void unload_entities(
-      const std::vector<const Window::EntityRange*>& ranges
+      const std::vector<const Window::EntityHandle*>& handles
     ) {
-      for (const auto range : ranges) {
-        auto end = range->begin;
-        for (int i = 0; i < range->count; i++) {
+      for (const auto handle : handles) {
+        auto end = handle->begin;
+        for (int i = 0; i < handle->count; i++) {
           end++;
         }
-        sprites.erase(range->begin, end);
-        entity_ranges.erase(range);
+        sprites.erase(handle->begin, end);
+        entity_handles.erase(handle);
       }
     }
 
-    const Window::BoxRange* load_boxes(
-      const std::vector<geometry::Rectangle<float>>& boxes
-    ) {
-      auto begin = this->boxes.insert(
-        this->boxes.end(),
-        boxes.begin(),
-        boxes.end()
-      );
-      Window::BoxRange* range = new Window::BoxRange {
-        .begin = begin,
-        .count = boxes.size()
-      };
-      box_ranges.insert({
-          range,
-          std::unique_ptr<Window::BoxRange>(range)
-        });
-      return range;
-    }
-
-    void unload_boxes(
-      const std::vector<const Window::BoxRange*> ranges
-    ) {
-      for (const auto range : ranges) {
-        auto end = range->begin;
-        for (int i = 0; i < range->count; i++) {
-          end++;
-        }
-        boxes.erase(range->begin, end);
-        box_ranges.erase(range);
-      }
-    }
-
-    void bind_context() {
-      glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer);
+    void* get_context() {
+      return reinterpret_cast<void*>(frame_buffer);
     }
 
     void clear_context(float r, float g, float b, float a) {
-      bind_context();
+      glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer);
       glViewport(0, 0, 256, 240);
       glClearColor(r, g, b, a);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -962,7 +882,7 @@ namespace ultra::sdl {
 
     void render() {
       // Render to frame buffer.
-      bind_context();
+      glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer);
 
       // Render background tiles.
       render_tiles(0, maps[map_index].entities_index);
@@ -1117,58 +1037,6 @@ namespace ultra::sdl {
         maps[map_index].entities_index,
         maps[map_index].layers.size() - maps[map_index].entities_index
       );
-
-      // Draw boxes.
-      glUseProgram(box_program);
-      float* curr_box = box_data;
-      for (const auto& box : boxes) {
-        *curr_box++ = box.position.x;
-        *curr_box++ = box.position.y;
-        *curr_box++ = box.size.x;
-        *curr_box++ = box.size.y;
-      }
-      // Set the camera position uniform value.
-      glUniform2f(
-        uniform_locations.box.camera_position,
-        camera_position.x,
-        camera_position.y
-      );
-      // Set the map position uniform value.
-      glUniform2i(
-        uniform_locations.box.map_position,
-        maps[map_index].position.x,
-        maps[map_index].position.y
-      );
-      // Upload the box data.
-      glBindVertexArray(vertex_arrays[BUFFER_IDX_BOX]);
-      glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_BOX]);
-      glBufferSubData(
-        GL_ARRAY_BUFFER,
-        static_cast<GLintptr>(0),
-        static_cast<GLsizeiptr>(boxes.size() * 4 * sizeof(float)),
-        box_data
-      );
-      // Draw the boxes.
-      glVertexAttribPointer(
-        0,
-        2,
-        GL_FLOAT,
-        GL_FALSE,
-        4 * sizeof(float),
-        reinterpret_cast<void*>(0)
-      );
-      glVertexAttribPointer(
-        1,
-        2,
-        GL_FLOAT,
-        GL_FALSE,
-        4 * sizeof(float),
-        reinterpret_cast<void*>(2 * sizeof(float))
-      );
-      glEnableVertexAttribArray(0);
-      glEnableVertexAttribArray(1);
-      glDrawArrays(GL_POINTS, 0, boxes.size());
-      glBindVertexArray(0);
     }
 
     void draw_context() {
@@ -1385,8 +1253,6 @@ namespace ultra::sdl {
 
     GLuint sprite_program;
 
-    GLuint box_program;
-
     GLuint quad_program;
 
     GLuint array_buffers[BUFFERS_COUNT];
@@ -1399,8 +1265,6 @@ namespace ultra::sdl {
 
     std::list<sdl::Sprite> sprites;
 
-    std::list<geometry::Rectangle<float>> boxes;
-
     std::queue<uint8_t> texture_indices;
 
     std::unordered_map<const Texture*, uint8_t> sprite_textures;
@@ -1408,23 +1272,18 @@ namespace ultra::sdl {
     std::queue<uint8_t> sprite_indices;
 
     std::unordered_map<
-      const Window::TilesetRange*,
-      std::unique_ptr<Window::TilesetRange>
-    > tileset_ranges;
+      const Window::TilesetHandle*,
+      std::unique_ptr<Window::TilesetHandle>
+    > tileset_handles;
 
     std::unordered_map<
-      const Window::EntityRange*,
-      std::unique_ptr<Window::EntityRange>
-    > entity_ranges;
-
-    std::unordered_map<
-      const Window::BoxRange*,
-      std::unique_ptr<Window::BoxRange>
-    > box_ranges;
+      const Window::EntityHandle*,
+      std::unique_ptr<Window::EntityHandle>
+    > entity_handles;
 
     std::vector<std::list<Texture*>> map_tile_textures;
 
-    std::vector<Window::TilesetRange> map_tileset_ranges;
+    std::vector<Window::TilesetHandle> map_tileset_handles;
 
     TextureList::iterator world_textures;
 
@@ -1457,19 +1316,12 @@ namespace ultra::sdl {
       } sprite;
 
       struct {
-        GLint camera_position;
-        GLint map_position;
-      } box;
-
-      struct {
         GLint rendered_texture;
       } quad;
 
     } uniform_locations;
 
     SpriteAttributes sprite_data[MAX_SPRITES];
-
-    float box_data[4 * MAX_BOXES];
 
     const World::Map* maps;
 
@@ -1536,7 +1388,7 @@ namespace ultra {
     impl->set_camera_position(position);
   }
 
-  const Window::TilesetRange* Window::load_tilesets(
+  const Window::TilesetHandle* Window::load_tilesets(
     PathManager& pm,
     const std::vector<const Tileset*>& tilesets
   ) {
@@ -1545,10 +1397,10 @@ namespace ultra {
   }
 
   void Window::unload_tilesets(
-    const std::vector<const Window::TilesetRange*>& ranges
+    const std::vector<const Window::TilesetHandle*>& handles
   ) {
     auto impl = WindowImpl::deref(this->impl);
-    impl->unload_tilesets(ranges);
+    impl->unload_tilesets(handles);
   }
 
   void Window::load_world(PathManager& pm, const World& world) {
@@ -1561,39 +1413,27 @@ namespace ultra {
     impl->unload_world();
   }
 
-  const Window::TilesetRange* Window::load_map(uint16_t index) {
+  const Window::TilesetHandle* Window::load_map(uint16_t index) {
     auto impl = WindowImpl::deref(this->impl);
     return impl->load_map(index);
   }
 
-  const Window::EntityRange* Window::load_entities(
+  const Window::EntityHandle* Window::load_entities(
     const std::vector<const Entity*>& entities,
-    const std::vector<const TilesetRange*>& tilesets
+    const std::vector<const TilesetHandle*>& tilesets
   ) {
     auto impl = WindowImpl::deref(this->impl);
     return impl->load_entities(entities, tilesets);
   }
 
-  void Window::unload_entities(const std::vector<const EntityRange*>& ranges) {
+  void Window::unload_entities(const std::vector<const EntityHandle*>& handles) {
     auto impl = WindowImpl::deref(this->impl);
-    impl->unload_entities(ranges);
+    impl->unload_entities(handles);
   }
 
-  const Window::BoxRange* Window::load_boxes(
-    const std::vector<geometry::Rectangle<float>>& boxes
-  ) {
+  void* Window::get_context() {
     auto impl = WindowImpl::deref(this->impl);
-    return impl->load_boxes(boxes);
-  }
-
-  void Window::unload_boxes(const std::vector<const BoxRange*> ranges) {
-    auto impl = WindowImpl::deref(this->impl);
-    impl->unload_boxes(ranges);
-  }
-
-  void Window::bind_context() {
-    auto impl = WindowImpl::deref(this->impl);
-    impl->bind_context();
+    return impl->get_context();
   }
 
   void Window::clear_context(float r, float g, float b, float a) {

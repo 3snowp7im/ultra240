@@ -15,7 +15,6 @@ SHADER_SOURCES = \
 	shader/sprite_vert.c \
 	shader/tex_geom.c \
 	shader/tex_frag.c \
-	shader/box_vert.c \
 	shader/line_geom.c \
 	shader/line_frag.c \
 	shader/passthrough.c \

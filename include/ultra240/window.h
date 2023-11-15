@@ -34,14 +34,11 @@ namespace ultra {
     /** Free module resources. */
     static void quit();
 
-    /** Internal pointer to tilesets loaded in graphics hardware. */
-    struct TilesetRange;
+    /** Internal pointer to tileset loaded in graphics hardware. */
+    struct TilesetHandle;
 
     /** Internal pointer to entities loaded in graphics hardware. */
-    struct EntityRange;
-
-    /** Internal pointer to boxes loaded in graphics hardware. */
-    struct BoxRange;
+    struct EntityHandle;
 
     /** Instance constructor. */
     Window(
@@ -68,14 +65,14 @@ namespace ultra {
     );
 
     /** Load a collection of tilesets to the graphics hardware. */
-    const TilesetRange* load_tilesets(
+    const TilesetHandle* load_tilesets(
       PathManager& loader,
       const std::vector<const Tileset*>& tilesets
     );
 
     /** Unload a collection of tilesets from the graphics hardware. */
     void unload_tilesets(
-      const std::vector<const TilesetRange*>& ranges
+      const std::vector<const TilesetHandle*>& handles
     );
 
     /** Load a world to the graphics hardware. */
@@ -85,38 +82,27 @@ namespace ultra {
     void unload_world();
 
     /** Load a world map for rendering. */
-    const TilesetRange* load_map(uint16_t index);
+    const TilesetHandle* load_map(uint16_t index);
 
     /** 
      * Load a collection of entities and their associated tileset pointers
      * to the graphics hardware.
      */
-    const EntityRange* load_entities(
+    const EntityHandle* load_entities(
       const std::vector<const Entity*>& entities,
-      const std::vector<const TilesetRange*>& tilesets
+      const std::vector<const TilesetHandle*>& tilesets
     );
 
     /** Unload a collection of entities from the graphics hardware. */
-    void unload_entities(const std::vector<const EntityRange*>& ranges);
+    void unload_entities(const std::vector<const EntityHandle*>& handles);
 
-    /** Load a collection of boxes to the graphics hardware. */
-    const BoxRange* load_boxes(
-      const std::vector<geometry::Rectangle<float>>& boxes
-    );
-
-    /** Unload a collection of boxes from the graphics hardware. */
-    void unload_boxes(
-      const std::vector<const BoxRange*> ranges
-    );
-
-    /** 
-     * Bind the drawing context.
+    /**
+     * Get the underlying drawing context.
      *
-     * This should only be called if the user wants to use external programs
-     * for drawing. The window will automatically bind its drawing context
-     * when necessary.
+     * The returned value is dependent on the underlying graphics implementation
+     * and is therefore not portable.
      */
-    void bind_context();
+    void* get_context();
 
     /** Clear the rendering context with the specified color. */
     void clear_context(float r, float g, float b, float a);
