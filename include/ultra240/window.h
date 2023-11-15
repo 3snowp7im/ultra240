@@ -109,8 +109,23 @@ namespace ultra {
       const std::vector<const BoxRange*> ranges
     );
 
-    /** Render the current frame. */
-    void draw();
+    /** 
+     * Bind the drawing context.
+     *
+     * This should only be called if the user wants to use external programs
+     * for drawing. The window will automatically bind its drawing context
+     * when necessary.
+     */
+    void bind_context();
+
+    /** Clear the rendering context with the specified color. */
+    void clear_context(float r, float g, float b, float a);
+
+    /** Render the current frame to the context. */
+    void render();
+
+    /** Draw the context to the screen. */
+    void draw_context();
 
     class Impl {
     public:

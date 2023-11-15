@@ -949,12 +949,20 @@ namespace ultra::sdl {
       }
     }
 
-    void draw() {
-      // Render to frame buffer.
+    void bind_context() {
       glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer);
+    }
+
+    void clear_context(float r, float g, float b, float a) {
+      bind_context();
       glViewport(0, 0, 256, 240);
-      glClearColor(0, 0, 0, 1);
+      glClearColor(r, g, b, a);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
+
+    void render() {
+      // Render to frame buffer.
+      bind_context();
 
       // Render background tiles.
       render_tiles(0, maps[map_index].entities_index);
@@ -1161,7 +1169,9 @@ namespace ultra::sdl {
       glEnableVertexAttribArray(1);
       glDrawArrays(GL_POINTS, 0, boxes.size());
       glBindVertexArray(0);
+    }
 
+    void draw_context() {
       // Draw the quad.
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
       glViewport(
@@ -1183,7 +1193,6 @@ namespace ultra::sdl {
         GL_UNSIGNED_INT,
         reinterpret_cast<void*>(0)
       );
-
       // Update window.
       SDL_GL_SwapWindow(sdl_window.get());
     }
@@ -1582,12 +1591,27 @@ namespace ultra {
     impl->unload_boxes(ranges);
   }
 
-  void Window::draw() {
+  void Window::bind_context() {
+    auto impl = WindowImpl::deref(this->impl);
+    impl->bind_context();
+  }
+
+  void Window::clear_context(float r, float g, float b, float a) {
+    auto impl = WindowImpl::deref(this->impl);
+    impl->clear_context(r, g, b, a);
+  }
+
+  void Window::render() {
     auto impl = WindowImpl::deref(this->impl);
     predraw();
-    impl->draw();
+    impl->render();
     postdraw();
     impl->time++;
+  }
+
+  void Window::draw_context() {
+    auto impl = WindowImpl::deref(this->impl);
+    impl->draw_context();
   }
 
 }
