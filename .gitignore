@@ -3,6 +3,7 @@
 /compile
 /config.*
 /configure
+/configure~
 /depcomp
 /INSTALL
 /install-sh

@@ -870,12 +870,16 @@ namespace ultra::sdl {
       }
     }
 
+    void* get_context() {
+      return gl_context;
+    }
+
     void* get_native_window() {
-      // SDL_SysWMinfo window_info;
-      // SDL_VERSION(&window_info.version);
-      // if (SDL_GetWindowWMInfo(window, &window_info)) {
-      //   return reinterpret_cast<void*>(window_info.info.x11.window);
-      // }
+      SDL_SysWMinfo window_info;
+      SDL_VERSION(&window_info.version);
+      if (SDL_GetWindowWMInfo(sdl_window.get(), &window_info)) {
+        return reinterpret_cast<void*>(window_info.info.x11.window);
+      }
       return nullptr;
     }
 
@@ -1441,6 +1445,11 @@ namespace ultra {
   ) {
     auto impl = WindowImpl::deref(this->impl);
     impl->unload_entities(handles);
+  }
+
+  void* Window::get_context() {
+    auto impl = WindowImpl::deref(this->impl);
+    return impl->get_context();
   }
 
   void* Window::get_native_window() {
