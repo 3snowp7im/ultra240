@@ -31,7 +31,7 @@ window.lo: $(GLAD_HEADER_FILES)
 window.lo: CXXFLAGS += $(SDL2_CFLAGS)
 
 $(GLAD_FILES):
-	glad --api gl=4.2 --generator c --out-path ../../
+	glad --api gl=3.3 --generator c --out-path ../../
 
 SUFFIXES: .glsl
 .glsl.c:

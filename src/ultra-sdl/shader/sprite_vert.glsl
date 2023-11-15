@@ -1,4 +1,4 @@
-#version 420 core
+#version 330 core
 layout (location = 0) in vec2 entity_position;
 layout (location = 1) in uint index;
 layout (location = 2) in uint tile_index;

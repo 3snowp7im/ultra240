@@ -1,4 +1,4 @@
-#version 420 core
+#version 330 core
 layout (location = 0) in uint tile_value;
 
 uniform uint tileset_indices[16];

@@ -1344,9 +1344,9 @@ namespace ultra {
         std::string("Window: could not initialize SDL: ") + SDL_GetError()
       );
     }
-    // Use OpenGL 4.2 core.
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    // Use OpenGL 3.3 core.
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(
       SDL_GL_CONTEXT_PROFILE_MASK,
       SDL_GL_CONTEXT_PROFILE_CORE
