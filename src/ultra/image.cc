@@ -1,5 +1,6 @@
-#include <ultra240/file.h>
-#include <ultra240/image.h>
+#include <fstream>
+#include "ultra.h"
+#include "image.h"
 
 namespace ultra {
 
@@ -15,10 +16,10 @@ namespace ultra {
     stream.read(reinterpret_cast<char*>(&img.data[0]), data_size);
   }
 
-  Image::Image(PathManager& pm, const char* name) {
-    std::string file_name = "img/" + std::string(name) + ".bmp";
-    file::Input file(pm.get_data_path(file_name.c_str()).c_str());
-    read(*this, file.stream());
+  Image::Image(const std::string& name) {
+    std::string file_name = std::string(name) + ".bmp";
+    std::ifstream file(ultra::data_dir + "/img/" + file_name);
+    read(*this, file);
     file.close();
   }
 

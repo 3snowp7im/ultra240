@@ -3,13 +3,12 @@
 #include <istream>
 #include <map>
 #include <memory>
-#include <ultra240/hash.h>
-#include <ultra240/dynamic_library.h>
-#include <ultra240/geometry.h>
-#include <ultra240/path_manager.h>
-#include <ultra240/vector_allocator.h>
 #include <string>
 #include <vector>
+#include <ultra240/dynamic_library.h>
+#include <ultra240/hash.h>
+#include <ultra240/geometry.h>
+#include <ultra240/vector_allocator.h>
 
 namespace ultra {
 
@@ -36,11 +35,8 @@ namespace ultra {
       class CollisionBox : public geometry::Rectangle<uint16_t> {
       public:
 
-        /** Instance constructer. */
-        CollisionBox();
-
         /** Read serialized collision box from stream. */
-        void read(std::istream& stream);
+        CollisionBox(std::istream& stream);
 
         /** A collection of named collision boxes. */
         using NamedList = VectorAllocatorList<
@@ -52,11 +48,8 @@ namespace ultra {
       class AnimationTile {
       public:
 
-        /** Instance constructor. */
-        AnimationTile();
-
         /** Read serialized animation data from stream. */
-        void read(std::istream& stream);
+        AnimationTile(std::istream& stream);
 
         /** The animation tile index. */
         uint16_t tile_index;
@@ -65,8 +58,11 @@ namespace ultra {
         uint16_t duration;
       };
 
+      /** Instance constructor. */
+      Tile();
+
       /** Read serialized tile data from stream. */
-      void read(PathManager& pm, std::istream& stream);
+      void read(std::istream& stream);
 
       /** The tile data name. */
       Hash<>::Type name;
@@ -80,18 +76,16 @@ namespace ultra {
       /** Collection of animation tiles. */
       std::vector<AnimationTile> animation_tiles;
 
-      /** Code library associated with this tile. */
-      std::shared_ptr<DynamicLibrary> library;
+    private:
+
+      std::unique_ptr<DynamicLibrary> library;
     };
 
-    /** Instance constructor. */
-    Tileset();
-
-    /** Load a serialized tileset of the specified name. */
-    Tileset(PathManager& pm, const char* name);
+    /** Read a serialized tileset from a file of specified name. */
+    Tileset(const std::string& name);
 
     /** Read a serialized tileset from a stream. */
-    void read(PathManager& pm, std::istream& stream);
+    Tileset(std::istream& stream);
 
     /** Return the tile index for a specified name. */
     uint16_t get_tile_index_by_name(uint32_t name) const;
@@ -105,12 +99,11 @@ namespace ultra {
     /** Name of bitmap used for rendering. */
     std::string source;
 
-    /** Associated code library. */
-    std::shared_ptr<DynamicLibrary> library;
+    std::map<uint32_t, uint16_t> name_map;
 
   private:
 
-    std::map<uint32_t, uint16_t> name_map;
+    std::unique_ptr<DynamicLibrary> library;
   };
 
 }

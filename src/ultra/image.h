@@ -1,8 +1,7 @@
 #pragma once
 
-#include <ultra240/geometry.h>
-#include <ultra240/path_manager.h>
 #include <vector>
+#include <ultra240/geometry.h>
 
 namespace ultra {
 
@@ -11,7 +10,7 @@ namespace ultra {
   public:
 
     /** Load a bitmap from a specified name. */
-    Image(PathManager& pm, const char* name);
+    Image(const std::string& name);
 
     /** Image width and height. */
     geometry::Vector<uint32_t> size;

@@ -1,14 +1,13 @@
+#include <fstream>
 #include <unordered_map>
 #include <memory>
-#include <ultra240/file.h>
 #include <ultra240/world.h>
+#include "ultra.h"
 
 namespace ultra {
 
-  World::World(PathManager& pm, const char* name) {
-    auto filename = std::string("world/") + name + ".bin";
-    file::Input file(pm.get_data_path(filename.c_str()).c_str());
-    auto& stream = file.stream();
+  World::World(const std::string& name) {
+    std::ifstream stream(ultra::data_dir + "/world/" + name + ".bin");
     // Read number of maps.
     uint16_t map_count;
     stream.read(reinterpret_cast<char*>(&map_count), sizeof(uint16_t));
@@ -32,10 +31,10 @@ namespace ultra {
       );
     }
     // Read maps.
-    maps.resize(map_count);
+    maps.reserve(map_count);
     for (int i = 0; i < map_count; i++) {
       stream.seekg(map_offsets[i], stream.beg);
-      maps[i].read(pm, stream);
+      maps.emplace_back(stream);
     }
     // Read points in boundaries.
     std::vector<std::vector<geometry::Vector<int32_t>>> points(
@@ -63,7 +62,7 @@ namespace ultra {
       auto a = boundary.cbegin();
       auto b = std::next(a);
       while (b != boundary.cend()) {
-        boundaries->emplace_back(*a, *b, flags);
+        boundaries->emplace_back(flags, *a, *b);
         a++;
         b++;
       }
@@ -81,9 +80,9 @@ namespace ultra {
       flags(0) {}
 
   World::Boundary::Boundary(
+    uint8_t flags,
     const geometry::Vector<float>& p,
-    const geometry::Vector<float>& q,
-    uint8_t flags
+    const geometry::Vector<float>& q
   ) : geometry::LineSegment<float>(p, q),
       flags(flags) {}
 
@@ -91,9 +90,7 @@ namespace ultra {
     return *boundaries;
   }
 
-  World::Map::Map() {}
-
-  void World::Map::read(PathManager& pm, std::istream& stream) {
+  World::Map::Map(std::istream& stream) {
     // Read map position in world.
     stream.read(reinterpret_cast<char*>(&position.x), sizeof(int16_t));
     stream.read(reinterpret_cast<char*>(&position.y), sizeof(int16_t));
@@ -153,9 +150,9 @@ namespace ultra {
     uint16_t entity_count;
     stream.read(reinterpret_cast<char*>(&entity_count), sizeof(uint16_t));
     // Read entities.
-    entities.resize(entity_count);
+    entities.reserve(entity_count);
     for (int i = 0; i < entity_count; i++) {
-      entities[i].read(stream);
+      entities.emplace(entities.end(), stream);
     }
     sorted_entities.x.min.resize(entity_count);
     for (int i = 0; i < entity_count; i++) {
@@ -185,8 +182,7 @@ namespace ultra {
     map_tilesets.resize(map_tileset_count);
     for (int i = 0; i < map_tileset_count; i++) {
       stream.seekg(map_tileset_offsets[i], stream.beg);
-      tilesets.at(map_tileset_offsets[i]).reset(new Tileset);
-      tilesets.at(map_tileset_offsets[i])->read(pm, stream);
+      tilesets.at(map_tileset_offsets[i]).reset(new Tileset(stream));
       map_tilesets[i] = tilesets.at(map_tileset_offsets[i]);
     }
     // Read entity tilesets.
@@ -194,8 +190,7 @@ namespace ultra {
     for (int i = 0; i < entity_tileset_count; i++) {
       stream.seekg(entity_tileset_offsets[i], stream.beg);
       if (tilesets.at(entity_tileset_offsets[i]) == nullptr) {
-        tilesets.at(entity_tileset_offsets[i]).reset(new Tileset);
-        tilesets.at(entity_tileset_offsets[i])->read(pm, stream);
+        tilesets.at(entity_tileset_offsets[i]).reset(new Tileset(stream));
       }
       entity_tilesets[i] = tilesets.at(entity_tileset_offsets[i]);
     }
@@ -207,16 +202,14 @@ namespace ultra {
       entity.tile_index = (entity.tile_index & 0x3ff) - 1;
     }
     // Read layers.
-    layers.resize(layer_count);
+    layers.reserve(layer_count);
     for (int i = 0; i < layer_count; i++) {
       stream.seekg(layer_offsets[i], stream.beg);
-      layers[i].read(stream, size);
+      layers.emplace_back(stream, size);
     }
   }
 
-  World::Map::Layer::Layer() {}
-
-  void World::Map::Layer::read(
+  World::Map::Layer::Layer(
     std::istream& stream,
     const geometry::Vector<uint16_t>& size
   ) {
@@ -236,9 +229,7 @@ namespace ultra {
     );
   }
 
-  World::Map::Entity::Entity() {}
-
-  void World::Map::Entity::read(std::istream& stream) {
+  World::Map::Entity::Entity(std::istream& stream) {
     stream.read(reinterpret_cast<char*>(&position.x), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&position.y), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&tile_index), sizeof(uint16_t));

@@ -3,11 +3,11 @@
 #include <array>
 #include <list>
 #include <memory>
+#include <vector>
 #include <ultra240/geometry.h>
 #include <ultra240/hash.h>
 #include <ultra240/tileset.h>
 #include <ultra240/world.h>
-#include <vector>
 
 namespace ultra {
 

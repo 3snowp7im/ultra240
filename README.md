@@ -1,24 +1,21 @@
 # ULTRA240
 
-ULTRA240 is a game engine designed to power retro-style platformers. It is a
-minimal framework supporting a single rendering mode (240p).
+ULTRA240 is a minimal 2D tile game library designed for retro-style platformers.
+Like game consoles of the 15kHz era, ULTRA240 is designed for rendering a 240p
+view.
 
-Here are some things that ULTRA240 does:
+This project aims to be an easily integratable library and not a framework. You
+must create a window and a rendering context using a graphics library of your
+choice. The reasoning is that there are plenty of existing windowing and
+graphics libraries with more capabilities than I could hope to implement. Rather
+than create a framework that attempts to do it all, my time is better spent
+perfecting a the small subset of features that relate to a specific use case.
 
-* Create a game window
-* Load file system resources
-* Load user settings
-* Detect entity collisions
-* Detect player input
-* Render frames
-* Play audio (planned)
+ULTRA240 has three major features:
 
-Here are some things that ULTRA240 does not do:
-
-* Create the main loop
-* Handle player input
-* Implement movement
-* Implement entity loading strategies
+* Loading compiled game resources and code
+* Effeciently rendering tiles
+* Detecting entity collisions
 
 While I plan on eventually providing this software with an open source
 license, it is currently UNLICENSED. You may use and modify it as you see fit,
@@ -37,7 +34,7 @@ however you may not distribute it in any form for any reason.
 To install the build dependencies on Ubuntu:
 
 ```shell
-$ sudo apt-get install build-essential libsdl2-dev libyaml-cpp-dev python3-glad
+$ sudo apt-get install build-essential libgl-dev
 ```
 
 ### Building a non-release version

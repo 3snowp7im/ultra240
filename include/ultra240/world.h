@@ -2,11 +2,11 @@
 
 #include <istream>
 #include <memory>
+#include <string>
+#include <vector>
 #include <ultra240/geometry.h>
-#include <ultra240/path_manager.h>
 #include <ultra240/tileset.h>
 #include <ultra240/vector_allocator.h>
-#include <vector>
 
 namespace ultra {
 
@@ -34,11 +34,8 @@ namespace ultra {
       class Layer {
       public:
 
-        /** Instance constructor. */
-        Layer();
-
         /** Read a serialized layer from a stream. */
-        void read(
+        Layer(
           std::istream& stream,
           const geometry::Vector<uint16_t>& size
         );
@@ -58,11 +55,8 @@ namespace ultra {
       class Entity {
       public:
 
-        /** Instance constructor. */
-        Entity();
-
         /** Read a serialized entity from a stream. */
-        void read(std::istream& stream);
+        Entity(std::istream& stream);
 
         /** Pointer to the entity tileset. */
         const Tileset* tileset;
@@ -88,11 +82,8 @@ namespace ultra {
         uint32_t state;
       };
 
-      /** Instance constructor. */
-      Map();
-
       /** Read a serialized map from a stream. */
-      void read(PathManager& pm, std::istream& stream);
+      Map(std::istream& stream);
 
       /** Position of the map in the world. */
       geometry::Vector<int16_t> position;
@@ -159,9 +150,9 @@ namespace ultra {
 
       /** Construct boundary from two vectors and flags. */
       Boundary(
+        uint8_t flags,
         const geometry::Vector<float>& p,
-        const geometry::Vector<float>& q,
-        uint8_t flags
+        const geometry::Vector<float>& q
       );
 
       /** Boundary flags. */
@@ -171,11 +162,8 @@ namespace ultra {
     /** Fixed size vector backed list of boundaries. */
     using Boundaries = VectorAllocatorList<Boundary>;
 
-    /** 
-     * Instantiate world and load from serialized world file of specified
-     * name.
-     */
-    World(PathManager& pm, const char* name);
+    /** Load serialized world from specified file name. */
+    World(const std::string& name);
 
     /** Get the boundaries collection. */
     const Boundaries& get_boundaries() const;

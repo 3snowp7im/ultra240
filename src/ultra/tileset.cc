@@ -1,17 +1,9 @@
+#include <fstream>
 #include <ultra240/tileset.h>
-#include <ultra240/util.h>
+#include "ultra.h"
+#include "dynamic_library.h"
 
 namespace ultra {
-
-  Tileset::Tileset() {}
-
-  Tileset::Tileset(PathManager& pm, const char* name) {
-    std::string file_name = "tileset/" + std::string(name) + ".bin";
-    file::Input file(pm.get_data_path(file_name.c_str()).c_str());
-    auto& stream = file.stream();
-    read(pm, stream);
-    file.close();
-  }
 
   static std::string read_string(std::istream& stream) {
     std::vector<char> buf;
@@ -24,13 +16,17 @@ namespace ultra {
     return std::string(&buf[0]);
   }
 
-  void Tileset::read(PathManager& pm, std::istream& stream) {
+  static void read(
+    Tileset& ts,
+    std::unique_ptr<DynamicLibrary>& library,
+    std::istream& stream
+  ) {
     // Read tile count.
     uint16_t tile_count;
     stream.read(reinterpret_cast<char*>(&tile_count), sizeof(uint16_t));
     // Read width and height.
-    stream.read(reinterpret_cast<char*>(&tile_size.x), sizeof(uint16_t));
-    stream.read(reinterpret_cast<char*>(&tile_size.y), sizeof(uint16_t));
+    stream.read(reinterpret_cast<char*>(&ts.tile_size.x), sizeof(uint16_t));
+    stream.read(reinterpret_cast<char*>(&ts.tile_size.y), sizeof(uint16_t));
     // Read image source offset.
     uint32_t source_offset;
     stream.read(reinterpret_cast<char*>(&source_offset), sizeof(uint32_t));
@@ -43,32 +39,41 @@ namespace ultra {
     // Read tile offsets.
     uint32_t tile_offsets[tile_data_count];
     for (int i = 0; i < tile_data_count; i++) {
-      stream.read(
-        reinterpret_cast<char*>(&tile_offsets[i]),
-        sizeof(uint32_t)
-      );
+      stream.read(reinterpret_cast<char*>(&tile_offsets[i]), sizeof(uint32_t));
     }
     // Read image source.
     stream.seekg(source_offset, stream.beg);
-    source = read_string(stream);
+    ts.source = read_string(stream);
     // Load dynamic library.
     stream.seekg(library_offset, stream.beg);
     auto library_name = read_string(stream);
     if (library_name.size()) {
-      library = std::make_shared<DynamicLibrary>(pm, library_name.c_str());
+      library.reset(new dynamic_library::Impl(library_name.c_str()));
     }
     // Read tiles.
-    tiles.resize(tile_count);
+    ts.tiles.resize(tile_count);
     for (int i = 0; i < tile_data_count; i++) {
       stream.seekg(tile_offsets[i], stream.beg);
       uint16_t tile_index;
       stream.read(reinterpret_cast<char*>(&tile_index), sizeof(uint16_t));
-      tiles[tile_index].read(pm, stream);
-      name_map.insert({tiles[tile_index].name, tile_index});
+      ts.tiles[tile_index].read(stream);
+      ts.name_map.insert({ts.tiles[tile_index].name, tile_index});
     }
   }
 
-  void Tileset::Tile::read(PathManager& pm, std::istream& stream) {
+  Tileset::Tileset(const std::string& name) {
+    std::ifstream file(ultra::data_dir + "/tileset/" + name + ".bin");
+    read(*this, library, file);
+    file.close();
+  }
+
+  Tileset::Tileset(std::istream& stream) {
+    read(*this, library, stream);
+  }
+
+  Tileset::Tile::Tile() {}
+
+  void Tileset::Tile::read(std::istream& stream) {
     // Read tile name.
     stream.read(reinterpret_cast<char*>(&name), sizeof(uint32_t));
     // Read library offset.
@@ -95,15 +100,15 @@ namespace ultra {
       sizeof(uint8_t)
     );
     // Read animation tiles.
-    animation_tiles.resize(animation_tile_count);
+    animation_tiles.reserve(animation_tile_count);
     for (int i = 0; i < animation_tile_count; i++) {
-      animation_tiles[i].read(stream);
+      animation_tiles.emplace_back(stream);
     }
     // Load dynamic library.
     stream.seekg(library_offset, stream.beg);
     auto library_name = read_string(stream);
     if (library_name.size()) {
-      library = std::make_shared<DynamicLibrary>(pm, library_name.c_str());
+      library.reset(new dynamic_library::Impl(library_name.c_str()));
     }
     // Load collision boxes.
     for (auto type_offset : collision_box_type_offsets) {
@@ -115,8 +120,9 @@ namespace ultra {
         reinterpret_cast<char*>(&collision_box_list_count),
         sizeof(uint16_t)
       );
-      std::vector<uint32_t>
-        collision_box_list_offsets(collision_box_list_count);
+      std::vector<uint32_t> collision_box_list_offsets(
+        collision_box_list_count
+      );
       for (int i = 0; i < collision_box_list_count; i++) {
         stream.read(
           reinterpret_cast<char*>(&collision_box_list_offsets[i]),
@@ -141,7 +147,6 @@ namespace ultra {
           VectorAllocator<std::pair<Hash<>::Type, CollisionBox>>(box_count)
         )
       ).first->second;
-      named_list.resize(box_count);
       auto it = named_list.begin();
       for (auto list_offset : collision_box_list_offsets) {
         stream.seekg(list_offset);
@@ -153,27 +158,21 @@ namespace ultra {
           sizeof(uint16_t)
         );
         for (int i = 0; i < count; i++) {
-          it->first = name;
-          it->second.read(stream);
-          it++;
+          named_list.emplace_back(std::make_pair(name, CollisionBox(stream)));
         }
       }
     }
   }
 
-  Tileset::Tile::CollisionBox::CollisionBox()
-    : geometry::Rectangle<uint16_t>({0, 0}, {0, 0}) {}
-
-  void Tileset::Tile::CollisionBox::read(std::istream& stream) {
+  Tileset::Tile::CollisionBox::CollisionBox(std::istream& stream)
+    : geometry::Rectangle<uint16_t>({0, 0}, {0, 0}) {
     stream.read(reinterpret_cast<char*>(&position.x), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&position.y), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&size.x), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&size.y), sizeof(uint16_t));
   }
 
-  Tileset::Tile::AnimationTile::AnimationTile() {}
-
-  void Tileset::Tile::AnimationTile::read(std::istream& stream) {
+  Tileset::Tile::AnimationTile::AnimationTile(std::istream& stream) {
     stream.read(reinterpret_cast<char*>(&tile_index), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&duration), sizeof(uint16_t));
   }

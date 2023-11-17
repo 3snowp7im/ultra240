@@ -4,8 +4,8 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: ultra240
-Description: Game engine.
+Description: Minimal 2D tile game library
 Version: @VERSION@
-Requires: sdl2 yaml-cpp
+Requires: gl
 Cflags: -I${includedir}
-Libs: -L${libdir} -lultra -lultra-yaml -lultra-posix -lultra-sdl -ldl
+Libs: -L${libdir} -lultra-gl -lultra -lultra-posix
