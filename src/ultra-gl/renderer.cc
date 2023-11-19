@@ -13,9 +13,43 @@
 #include "renderer.h"
 #include "shader/shader.h"
 
-#define BUFFERS_COUNT   3
-#define TEXTURES_COUNT  3
-#define MAX_SPRITES     512
+#define MAX_SPRITES         512
+
+static const char* glEnumName(GLenum _enum) {
+#define GLENUM(_ty) case _ty: return #_ty
+  switch (_enum) {
+    GLENUM(GL_TEXTURE);
+    GLENUM(GL_RENDERBUFFER);
+    GLENUM(GL_INVALID_ENUM);
+    GLENUM(GL_INVALID_FRAMEBUFFER_OPERATION);
+    GLENUM(GL_INVALID_VALUE);
+    GLENUM(GL_INVALID_OPERATION);
+    GLENUM(GL_OUT_OF_MEMORY);
+    GLENUM(GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT);
+    GLENUM(GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT);
+    GLENUM(GL_FRAMEBUFFER_UNSUPPORTED);
+  }
+#undef GLENUM
+  return "<GLenum?>";
+}
+
+#define GL_CHECK(expr) {                                \
+    expr;                                               \
+    GLenum gl_err = glGetError();                       \
+    if (gl_err != 0) {                                  \
+      std::string gl_err_str(glEnumName(gl_err));       \
+      throw std::runtime_error(                         \
+        std::string(__FILE__)                           \
+        + ":"                                           \
+        + std::to_string(__LINE__)                      \
+        + " "                                           \
+        + #expr "; GL error 0x"                         \
+        + std::to_string(gl_err)                        \
+        + ": "                                          \
+        +  gl_err_str                                   \
+      );                                                \
+    }                                                   \
+  }
 
 namespace ultra::renderer {
 
@@ -23,12 +57,27 @@ namespace ultra::renderer {
   enum {
     BUFFER_IDX_TILE,
     BUFFER_IDX_SPRITE,
+    BUFFER_COUNT,
   };
 
   // Array indices for each texture array.
   enum {
     TEXTURE_IDX_TILE,
     TEXTURE_IDX_ANIMATION,
+    TEXTURE_IDX_RENDER,
+    TEXTURE_COUNT,
+  };
+
+  // Array indices for each framebuffer.
+  enum {
+    FRAMEBUFFER_IDX_RENDER,
+    FRAMEBUFFER_COUNT,
+  };
+
+  // Array indices for each renderbuffer.
+  enum {
+    RENDERBUFFER_IDX_DEPTH,
+    RENDERBUFFER_COUNT,
   };
 
   struct Texture {
@@ -94,22 +143,24 @@ namespace ultra::renderer {
       unsigned int shader_source_len
     ) : handle(glCreateShader(type)) {
       if (!handle) {
-        throw std::runtime_error("Window: could not create " + name);
+        throw std::runtime_error("Shader: could not create " + name);
       }
-      glShaderSource(
-        handle,
-        1,
-        reinterpret_cast<GLchar**>(&shader_source),
-        reinterpret_cast<GLint*>(&shader_source_len)
+      GL_CHECK(
+        glShaderSource(
+          handle,
+          1,
+          reinterpret_cast<GLchar**>(&shader_source),
+          reinterpret_cast<GLint*>(&shader_source_len)
+        )
       );
-      glCompileShader(handle);
+      GL_CHECK(glCompileShader(handle));
       GLint success;
-      glGetShaderiv(handle, GL_COMPILE_STATUS, &success);
+      GL_CHECK(glGetShaderiv(handle, GL_COMPILE_STATUS, &success));
       if (!success) {
         GLint log_length;
-        glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &log_length);
+        GL_CHECK(glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &log_length));
         GLchar log[log_length];
-        glGetShaderInfoLog(handle, log_length, nullptr, log);
+        GL_CHECK(glGetShaderInfoLog(handle, log_length, nullptr, log));
         throw std::runtime_error(
           "Shader: could not compile " + name + ": " + log
         );
@@ -133,19 +184,19 @@ namespace ultra::renderer {
     Program(const std::string& name, const std::vector<const Shader*>& shaders)
       : handle(glCreateProgram()) {
       if (!handle) {
-        throw std::runtime_error("Window: could not create " + name);
+        throw std::runtime_error("Program: could not create " + name);
       }
       for (const auto& shader : shaders) {
-        glAttachShader(handle, shader->handle);
+        GL_CHECK(glAttachShader(handle, shader->handle));
       }
-      glLinkProgram(handle);
+      GL_CHECK(glLinkProgram(handle));
       GLint success;
-      glGetProgramiv(handle, GL_LINK_STATUS, &success);
+      GL_CHECK(glGetProgramiv(handle, GL_LINK_STATUS, &success));
       if (!success) {
         GLint log_length;
-        glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &log_length);
+        GL_CHECK(glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &log_length));
         GLchar log[log_length];
-        glGetProgramInfoLog(handle, log_length, nullptr, log);
+        GL_CHECK(glGetProgramInfoLog(handle, log_length, nullptr, log));
         throw std::runtime_error(
           "Program: could not link " + name + ": " + log
         );
@@ -153,15 +204,23 @@ namespace ultra::renderer {
     }
 
     ~Program() {
-      glDeleteProgram(handle);
+      if (handle) {
+        glDeleteProgram(handle);
+      }
     }
 
     void use() {
-      glUseProgram(handle);
+      GL_CHECK(glUseProgram(handle));
     }
 
     GLint get_uniform_location(const GLchar* name) {
-      return glGetUniformLocation(handle, name);
+      GLint value;
+      GL_CHECK(value = glGetUniformLocation(handle, name));
+      if (value == -1) {
+        std::string sname(name);
+        throw std::runtime_error("Program: cannot find uniform " + sname);
+      }
+      return value;
     }
 
     GLuint handle;
@@ -187,7 +246,7 @@ namespace ultra::renderer {
 
     Textures(GLsizei count)
       : Handles(count) {
-      glGenTextures(count, &handles[0]);
+      GL_CHECK(glGenTextures(count, &handles[0]));
     }
 
     ~Textures() {
@@ -213,13 +272,41 @@ namespace ultra::renderer {
 
     VertexArrays(GLsizei count)
       : Handles(count) {
-      glGenVertexArrays(count, &handles[0]);
+      GL_CHECK(glGenVertexArrays(count, &handles[0]));
     }
 
     ~VertexArrays() {
       glDeleteVertexArrays(handles.size(), &handles[0]);
     }
   };
+
+  class Framebuffers : public Handles {
+  public:
+
+    Framebuffers(GLsizei count)
+      : Handles(count) {
+      GL_CHECK(glGenFramebuffers(count, &handles[0]));
+    }
+
+    ~Framebuffers() {
+      glDeleteFramebuffers(handles.size(), &handles[0]);
+    }
+  };
+
+
+  class Renderbuffers : public Handles {
+  public:
+
+    Renderbuffers(GLsizei count)
+      : Handles(count) {
+      GL_CHECK(glGenRenderbuffers(count, &handles[0]));
+    }
+
+    ~Renderbuffers() {
+      glDeleteRenderbuffers(handles.size(), &handles[0]);
+    }
+  };
+
 
   template<typename T>
   class HandlesPointer : public std::unique_ptr<T> {
@@ -242,8 +329,7 @@ namespace ultra::renderer {
     Renderer()
       : maps(nullptr),
         camera_position({0.f, 0.f}),
-        world_textures_count(0),
-        time(0){
+        world_textures_count(0) {
 
       // Compile shaders.
       auto tile_vert_shader = std::make_unique<Shader>(
@@ -295,9 +381,6 @@ namespace ultra::renderer {
       tex_geom_shader.reset(nullptr);
       tex_frag_shader.reset(nullptr);
 
-      // Generate textures.
-      textures.reset(new Textures(TEXTURES_COUNT));
-
       // Get tile uniform locations.
       for (int i = 0; i < 16; i++) {
         uniform_locations.tile.tileset_indices[i] =
@@ -321,8 +404,6 @@ namespace ultra::renderer {
         tile_program->get_uniform_location("time");
       uniform_locations.tile.animations =
         tile_program->get_uniform_location("animations");
-      uniform_locations.tile.tilesets =
-        tile_program->get_uniform_location("tilesets");
 
       // Get sprite uniform locations.
       for (int i = 0; i < 48; i++) {
@@ -347,35 +428,164 @@ namespace ultra::renderer {
         sprite_program->get_uniform_location("layer_index");
       uniform_locations.sprite.sprite_count =
         sprite_program->get_uniform_location("sprite_count");
-      uniform_locations.sprite.tilesets =
-        sprite_program->get_uniform_location("tilesets");
 
       // Generate array buffers.
-      array_buffers.reset(new Buffers(BUFFERS_COUNT));
+      array_buffers.reset(new Buffers(BUFFER_COUNT));
 
       // Generate vertex array.
-      vertex_arrays.reset(new VertexArrays(BUFFERS_COUNT));
+      vertex_arrays.reset(new VertexArrays(BUFFER_COUNT));
+
+      // Generate textures.
+      textures.reset(new Textures(TEXTURE_COUNT));
+
+      // Create frame buffers.
+      framebuffers.reset(new Framebuffers(FRAMEBUFFER_COUNT));
+
+      // Create depth buffers.
+      renderbuffers.reset(new Renderbuffers(RENDERBUFFER_COUNT));
+
+      // Initiate render texture.
+      GL_CHECK(
+        glBindTexture(
+          GL_TEXTURE_2D,
+          textures[TEXTURE_IDX_RENDER]
+        )
+      );
+      GL_CHECK(
+        glTexParameteri(
+          GL_TEXTURE_2D,
+          GL_TEXTURE_MIN_FILTER,
+          GL_NEAREST
+        )
+      );
+      GL_CHECK(
+        glTexParameteri(
+          GL_TEXTURE_2D,
+          GL_TEXTURE_MAG_FILTER,
+          GL_NEAREST
+        )
+      );
+      GL_CHECK(
+        glTexImage2D(
+          GL_TEXTURE_2D,
+          0,
+          GL_RGBA8,
+          256,
+          240,
+          0,
+          GL_RGBA,
+          GL_UNSIGNED_BYTE,
+          nullptr
+        )
+      );
+
+      // Initiate depth buffer.
+      GL_CHECK(
+        glBindRenderbuffer(
+          GL_RENDERBUFFER,
+          renderbuffers[RENDERBUFFER_IDX_DEPTH]
+        )
+      );
+      GL_CHECK(
+        glRenderbufferStorage(
+          GL_RENDERBUFFER,
+          GL_DEPTH_COMPONENT,
+          256,
+          240
+        )
+      );
+
+      // Attach depth buffer to frame buffer.
+      GL_CHECK(
+        glBindFramebuffer(
+          GL_FRAMEBUFFER,
+          framebuffers[FRAMEBUFFER_IDX_RENDER]
+        )
+      );
+      GL_CHECK(
+        glFramebufferRenderbuffer(
+          GL_FRAMEBUFFER,
+          GL_DEPTH_ATTACHMENT,
+          GL_RENDERBUFFER,
+          renderbuffers[RENDERBUFFER_IDX_DEPTH]
+        )
+      );
+
+      // Set rendered texture as color attachment 0.
+      GL_CHECK(
+        glFramebufferTexture(
+          GL_FRAMEBUFFER,
+          GL_COLOR_ATTACHMENT0,
+          textures[TEXTURE_IDX_RENDER],
+          0
+        )
+      );
+      GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
+      GL_CHECK(glDrawBuffers(1, &draw_buffer));
+      if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        throw std::runtime_error("Renderer: could not attach frame buffer");
+      }
 
       // Instantiate sprite buffer.
-      glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_SPRITE]);
-      glBufferData(
-        GL_ARRAY_BUFFER,
-        sizeof(sprite_data),
-        nullptr,
-        GL_DYNAMIC_DRAW
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_SPRITE]));
+      GL_CHECK(
+        glBufferData(
+          GL_ARRAY_BUFFER,
+          sizeof(sprite_data),
+          nullptr,
+          GL_DYNAMIC_DRAW
+        )
       );
 
       // Setup the tile texture array.
-      glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]);
-      glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, 2048, 2048, 64);
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]));
+      GL_CHECK(
+        glTexParameteri(
+          GL_TEXTURE_2D_ARRAY,
+          GL_TEXTURE_MIN_FILTER,
+          GL_NEAREST
+        )
+      );
+      GL_CHECK(
+        glTexParameteri(
+          GL_TEXTURE_2D_ARRAY,
+          GL_TEXTURE_MAG_FILTER,
+          GL_NEAREST
+        )
+      );
+      GL_CHECK(
+        glTexStorage3D(
+          GL_TEXTURE_2D_ARRAY,
+          1,
+          GL_RGBA8,
+          2048,
+          2048,
+          64
+        )
+      );
 
       // Setup the animations texture array.
-      glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_ANIMATION]);
-      glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RG16UI, 256, 256, 64);
+      GL_CHECK(
+        glBindTexture(
+          GL_TEXTURE_2D_ARRAY,
+          textures[TEXTURE_IDX_ANIMATION]
+        )
+      );
+      GL_CHECK(
+        glTexParameteri(
+          GL_TEXTURE_2D_ARRAY,
+          GL_TEXTURE_MIN_FILTER,
+          GL_NEAREST
+        )
+      );
+      GL_CHECK(
+        glTexParameteri(
+          GL_TEXTURE_2D_ARRAY,
+          GL_TEXTURE_MAG_FILTER,
+          GL_NEAREST
+        )
+      );
+      GL_CHECK(glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RG16UI, 256, 256, 64));
 
       // Push available texture indices onto the sprite texture index stack.
       for (int i = 0; i < 64; i++) {
@@ -384,6 +594,10 @@ namespace ultra::renderer {
       for (int i = 0; i < 48; i++) {
         sprite_indices.push(i);
       }
+    }
+
+    uintptr_t get_render_texture() {
+      return textures[TEXTURE_IDX_RENDER];
     }
 
     const TilesetHandle* load_tilesets(
@@ -505,14 +719,23 @@ namespace ultra::renderer {
       size_t layer_size = map_area * sizeof(uint16_t);
       size_t layer_count = maps[map_index].layers.size();
       size_t buffer_size = layer_count * layer_size;
-      glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_TILE]);
-      glBufferData(GL_ARRAY_BUFFER, buffer_size, nullptr, GL_STATIC_DRAW);
-      for (int i = 0; i < layer_count; i++) {
-        glBufferSubData(
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_TILE]));
+      GL_CHECK(
+        glBufferData(
           GL_ARRAY_BUFFER,
-          static_cast<GLintptr>(i * layer_size),
-          static_cast<GLsizeiptr>(layer_size),
-          &maps[map_index].layers[i].tiles[0]
+          buffer_size,
+          nullptr,
+          GL_STATIC_DRAW
+        )
+      );
+      for (int i = 0; i < layer_count; i++) {
+        GL_CHECK(
+          glBufferSubData(
+            GL_ARRAY_BUFFER,
+            static_cast<GLintptr>(i * layer_size),
+            static_cast<GLsizeiptr>(layer_size),
+            &maps[map_index].layers[i].tiles[0]
+          )
         );
       }
       return &map_tileset_handles[index];
@@ -562,12 +785,23 @@ namespace ultra::renderer {
 
     void render() {
       // Enable depth test
-      glEnable(GL_DEPTH_TEST);
-      glDepthFunc(GL_LESS); 
+      GL_CHECK(glEnable(GL_DEPTH_TEST));
+      GL_CHECK(glDepthFunc(GL_LESS));
 
       // Enable alpha blending.
-      glEnable(GL_BLEND);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      GL_CHECK(glEnable(GL_BLEND));
+      GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+      // Render to framebuffer.
+      GL_CHECK(
+        glBindFramebuffer(
+          GL_FRAMEBUFFER,
+          framebuffers[FRAMEBUFFER_IDX_RENDER]
+        )
+      );
+      GL_CHECK(glViewport(0, 0, 256, 240));
+      GL_CHECK(glClearColor(0, 0, 0, 1));
+      GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
       // Render background tiles.
       render_tiles(0, maps[map_index].entities_index);
@@ -575,52 +809,65 @@ namespace ultra::renderer {
       // Use the sprite program.
       sprite_program->use();
       // Set the tileset uniform.
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]);
-      glUniform1ui(uniform_locations.sprite.tilesets, 0);
+      GL_CHECK(glActiveTexture(GL_TEXTURE0));
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]));
       // Set uniforms linking texture index with tileset index.
       uint8_t sprite_indices[64];
       for (auto& pair : sprite_textures) {
         sprite_indices[pair.first->index] = pair.second;
         // Set the tileset indices uniform values.
-        glUniform1ui(
-          uniform_locations.sprite.tileset_indices[pair.second],
-          pair.first->index
+        GL_CHECK(
+          glUniform1ui(
+            uniform_locations.sprite.tileset_indices[pair.second],
+            pair.first->index
+          )
         );
         // Set the tile size uniform values.
-        glUniform2ui(
-          uniform_locations.sprite.tile_sizes[pair.second],
-          pair.first->tileset->tile_size.x,
-          pair.first->tileset->tile_size.y
+        GL_CHECK(
+          glUniform2ui(
+            uniform_locations.sprite.tile_sizes[pair.second],
+            pair.first->tileset->tile_size.x,
+            pair.first->tileset->tile_size.y
+          )
         );
         // Set the tileset size uniform values.
-        glUniform2ui(
-          uniform_locations.sprite.tileset_sizes[pair.second],
-          pair.first->size.x,
-          pair.first->size.y
+        GL_CHECK(
+          glUniform2ui(
+            uniform_locations.sprite.tileset_sizes[pair.second],
+            pair.first->size.x,
+            pair.first->size.y
+          )
         );
       }
       // Set the camera position uniform value.
-      glUniform2f(
-        uniform_locations.sprite.camera_position,
-        camera_position.x,
-        camera_position.y
+      GL_CHECK(
+        glUniform2f(
+          uniform_locations.sprite.camera_position,
+          camera_position.x,
+          camera_position.y
+        )
       );
       // Set the map position uniform value.
-      glUniform2i(
-        uniform_locations.sprite.map_position,
-        maps[map_index].position.x,
-        maps[map_index].position.y
+      GL_CHECK(
+        glUniform2i(
+          uniform_locations.sprite.map_position,
+          maps[map_index].position.x,
+          maps[map_index].position.y
+        )
       );
       // Set the layer index uniform value.
-      glUniform1ui(
-        uniform_locations.sprite.layer_index,
-        maps[map_index].entities_index
+      GL_CHECK(
+        glUniform1ui(
+          uniform_locations.sprite.layer_index,
+          maps[map_index].entities_index
+        )
       );
       // Set the sprite count uniform value.
-      glUniform1ui(
-        uniform_locations.sprite.sprite_count,
-        sprites.size()
+      GL_CHECK(
+        glUniform1ui(
+          uniform_locations.sprite.sprite_count,
+          sprites.size()
+        )
       );
       // Upload the sprite attributes data.
       SpriteAttributes* curr_attrs = sprite_data;
@@ -648,80 +895,99 @@ namespace ultra::renderer {
         }
         *curr_attrs++ = attrs;
       }
-      glBindVertexArray(vertex_arrays[BUFFER_IDX_SPRITE]);
-      glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_SPRITE]);
-      glBufferSubData(
-        GL_ARRAY_BUFFER,
-        static_cast<GLintptr>(0),
-        static_cast<GLsizeiptr>(sprites.size() * sizeof(SpriteAttributes)),
-        sprite_data
+      GL_CHECK(glBindVertexArray(vertex_arrays[BUFFER_IDX_SPRITE]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_SPRITE]));
+      GL_CHECK(
+        glBufferSubData(
+          GL_ARRAY_BUFFER,
+          static_cast<GLintptr>(0),
+          static_cast<GLsizeiptr>(sprites.size() * sizeof(SpriteAttributes)),
+          sprite_data
+        )
       );
       // Draw the sprites.
-      glVertexAttribPointer(
-        0,
-        2,
-        GL_FLOAT,
-        GL_FALSE,
-        sizeof(SpriteAttributes),
-        reinterpret_cast<void*>(offsetof(SpriteAttributes, position))
+      GL_CHECK(
+        glVertexAttribPointer(
+          0,
+          2,
+          GL_FLOAT,
+          GL_FALSE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, position))
+        )
       );
-      glVertexAttribIPointer(
-        1,
-        1,
-        GL_UNSIGNED_BYTE,
-        sizeof(SpriteAttributes),
-        reinterpret_cast<void*>(offsetof(SpriteAttributes, index))
+      GL_CHECK(
+        glVertexAttribIPointer(
+          1,
+          1,
+          GL_UNSIGNED_BYTE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, index))
+        )
       );
-      glVertexAttribIPointer(
-        2,
-        1,
-        GL_UNSIGNED_SHORT,
-        sizeof(SpriteAttributes),
-        reinterpret_cast<void*>(offsetof(SpriteAttributes, tile_index))
+      GL_CHECK(
+        glVertexAttribIPointer(
+          2,
+          1,
+          GL_UNSIGNED_SHORT,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, tile_index))
+        )
       );
-      glVertexAttribIPointer(
-        3,
-        2,
-        GL_UNSIGNED_BYTE,
-        sizeof(SpriteAttributes),
-        reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_tl))
+      GL_CHECK(
+        glVertexAttribIPointer(
+          3,
+          2,
+          GL_UNSIGNED_BYTE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_tl))
+        )
       );
-      glVertexAttribIPointer(
-        4,
-        2,
-        GL_UNSIGNED_BYTE,
-        sizeof(SpriteAttributes),
-        reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_tr))
+      GL_CHECK(
+        glVertexAttribIPointer(
+          4,
+          2,
+          GL_UNSIGNED_BYTE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_tr))
+        )
       );
-      glVertexAttribIPointer(
-        5,
-        2,
-        GL_UNSIGNED_BYTE,
-        sizeof(SpriteAttributes),
-        reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_bl))
+      GL_CHECK(
+        glVertexAttribIPointer(
+          5,
+          2,
+          GL_UNSIGNED_BYTE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_bl))
+        )
       );
-      glVertexAttribIPointer(
-        6,
-        2,
-        GL_UNSIGNED_BYTE,
-        sizeof(SpriteAttributes),
-        reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_br))
+      GL_CHECK(
+        glVertexAttribIPointer(
+          6,
+          2,
+          GL_UNSIGNED_BYTE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_br))
+        )
       );
-      glEnableVertexAttribArray(0);
-      glEnableVertexAttribArray(1);
-      glEnableVertexAttribArray(2);
-      glEnableVertexAttribArray(3);
-      glEnableVertexAttribArray(4);
-      glEnableVertexAttribArray(5);
-      glEnableVertexAttribArray(6);
-      glDrawArrays(GL_POINTS, 0, sprites.size());
-      glBindVertexArray(0);
+      GL_CHECK(glEnableVertexAttribArray(0));
+      GL_CHECK(glEnableVertexAttribArray(1));
+      GL_CHECK(glEnableVertexAttribArray(2));
+      GL_CHECK(glEnableVertexAttribArray(3));
+      GL_CHECK(glEnableVertexAttribArray(4));
+      GL_CHECK(glEnableVertexAttribArray(5));
+      GL_CHECK(glEnableVertexAttribArray(6));
+      GL_CHECK(glDrawArrays(GL_POINTS, 0, sprites.size()));
+      GL_CHECK(glBindVertexArray(0));
 
       // Render foreground tiles.
       render_tiles(
         maps[map_index].entities_index,
         maps[map_index].layers.size() - maps[map_index].entities_index
       );
+
+      // Unbind framebuffer.
+      GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
     }
 
     geometry::Vector<float> camera_position;
@@ -744,19 +1010,26 @@ namespace ultra::renderer {
           .index = texture_indices.front(),
         };
         texture_indices.pop();
-        glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]);
-        glTexSubImage3D(
-          GL_TEXTURE_2D_ARRAY,
-          0,
-          0,
-          0,
-          texture->index,
-          image.size.x,
-          image.size.y,
-          1,
-          GL_RGBA,
-          GL_UNSIGNED_BYTE,
-          &image.data[0]
+        GL_CHECK(
+          glBindTexture(
+            GL_TEXTURE_2D_ARRAY,
+            textures[TEXTURE_IDX_TILE]
+          )
+        );
+        GL_CHECK(
+          glTexSubImage3D(
+            GL_TEXTURE_2D_ARRAY,
+            0,
+            0,
+            0,
+            texture->index,
+            image.size.x,
+            image.size.y,
+            1,
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            &image.data[0]
+          )
         );
         if (type == Texture::Type::Tile) {
           Animation animations[256];
@@ -776,19 +1049,26 @@ namespace ultra::renderer {
               animation++;
             }
           }
-          glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_ANIMATION]);
-          glTexSubImage3D(
-            GL_TEXTURE_2D_ARRAY,
-            0,
-            0,
-            0,
-            texture->index,
-            256,
-            256,
-            1,
-            GL_RG_INTEGER,
-            GL_UNSIGNED_SHORT,
-            animations
+          GL_CHECK(
+            glBindTexture(
+              GL_TEXTURE_2D_ARRAY,
+              textures[TEXTURE_IDX_ANIMATION]
+            )
+          );
+          GL_CHECK(
+            glTexSubImage3D(
+              GL_TEXTURE_2D_ARRAY,
+              0,
+              0,
+              0,
+              texture->index,
+              256,
+              256,
+              1,
+              GL_RG_INTEGER,
+              GL_UNSIGNED_SHORT,
+              animations
+            )
           );
         }
         sprite_textures.insert({&*texture, sprite_indices.front()});
@@ -826,12 +1106,16 @@ namespace ultra::renderer {
       // Use the tile program;
       tile_program->use();
       // Set the tileset uniforms.
-      glUniform1i(uniform_locations.tile.tilesets, 0);
-      glUniform1i(uniform_locations.tile.animations, 1);
-      glActiveTexture(GL_TEXTURE0 + 0);
-      glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]);
-      glActiveTexture(GL_TEXTURE0 + 1);
-      glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_ANIMATION]);
+      GL_CHECK(glUniform1i(uniform_locations.tile.animations, 1));
+      GL_CHECK(glActiveTexture(GL_TEXTURE0 + 0));
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]));
+      GL_CHECK(glActiveTexture(GL_TEXTURE0 + 1));
+      GL_CHECK(
+        glBindTexture(
+          GL_TEXTURE_2D_ARRAY,
+          textures[TEXTURE_IDX_ANIMATION]
+        )
+      );
       // Set uniforms linking texture index with tileset index.
       auto texture = map_tile_textures[map_index].begin();
       for (int i = 0;
@@ -858,40 +1142,50 @@ namespace ultra::renderer {
         );
       }
       // Set the camera position uniform value.
-      glUniform2f(
-        uniform_locations.tile.camera_position,
-        camera_position.x,
-        camera_position.y
+      GL_CHECK(
+        glUniform2f(
+          uniform_locations.tile.camera_position,
+          camera_position.x,
+          camera_position.y
+        )
       );
       // Set the map size uniform value.
-      glUniform2ui(
-        uniform_locations.tile.map_size,
-        maps[map_index].size.x,
-        maps[map_index].size.y
+      GL_CHECK(
+        glUniform2ui(
+          uniform_locations.tile.map_size,
+          maps[map_index].size.x,
+          maps[map_index].size.y
+        )
       );
       // Set the time uniform value.
-      glUniform1ui(uniform_locations.tile.time, time);
+      GL_CHECK(glUniform1ui(uniform_locations.tile.time, time));
       // Draw the tiles
       size_t map_area = maps[map_index].size.x * maps[map_index].size.y;
       size_t tile_offset = map_area * start_layer_idx;
       size_t tile_count = map_area * layer_count;
-      glBindVertexArray(vertex_arrays[BUFFER_IDX_TILE]);
-      glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_TILE]);
-      glVertexAttribIPointer(
-        0,
-        1,
-        GL_UNSIGNED_SHORT,
-        sizeof(GLushort),
-        reinterpret_cast<void*>(0)
+      GL_CHECK(glBindVertexArray(vertex_arrays[BUFFER_IDX_TILE]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_TILE]));
+      GL_CHECK(
+        glVertexAttribIPointer(
+          0,
+          1,
+          GL_UNSIGNED_SHORT,
+          sizeof(GLushort),
+          reinterpret_cast<void*>(0)
+        )
       );
-      glEnableVertexAttribArray(0);
-      glDrawArrays(GL_POINTS, tile_offset, tile_count);
-      glBindVertexArray(0);
+      GL_CHECK(glEnableVertexAttribArray(0));
+      GL_CHECK(glDrawArrays(GL_POINTS, tile_offset, tile_count));
+      GL_CHECK(glBindVertexArray(0));
     }
 
     std::unique_ptr<Program> tile_program;
 
     std::unique_ptr<Program> sprite_program;
+
+    HandlesPointer<Framebuffers> framebuffers;
+
+    HandlesPointer<Renderbuffers> renderbuffers;
 
     HandlesPointer<Buffers> array_buffers;
 
@@ -927,8 +1221,6 @@ namespace ultra::renderer {
 
     size_t world_textures_count;
 
-    uint32_t time;
-
     struct {
 
       struct {
@@ -939,7 +1231,6 @@ namespace ultra::renderer {
         GLint map_size;
         GLint time;
         GLint animations;
-        GLint tilesets;
       } tile;
 
       struct {
@@ -950,7 +1241,6 @@ namespace ultra::renderer {
         GLint map_position;
         GLint layer_index;
         GLint sprite_count;
-        GLint tilesets;
       } sprite;
 
     } uniform_locations;
@@ -966,10 +1256,15 @@ namespace ultra::renderer {
 
   void init() {
     renderer.reset(new Renderer());
+    time = 0;
   }
 
   void quit() {
     renderer.reset(nullptr);
+  }
+
+  uintptr_t get_render_texture() {
+    return renderer->get_render_texture();
   }
 
   void set_camera_position(const geometry::Vector<float>& position) {
@@ -1010,7 +1305,10 @@ namespace ultra::renderer {
   }
 
   void render() {
+    predraw();
     renderer->render();
+    postdraw();
+    time++;
   }
 
 }

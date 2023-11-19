@@ -76,8 +76,7 @@ namespace ultra {
       /** Collection of animation tiles. */
       std::vector<AnimationTile> animation_tiles;
 
-    private:
-
+      /** Code library associated with this tile. */
       std::unique_ptr<DynamicLibrary> library;
     };
 
@@ -101,8 +100,7 @@ namespace ultra {
 
     std::map<uint32_t, uint16_t> name_map;
 
-  private:
-
+    /** Code library associated with this tileset. */
     std::unique_ptr<DynamicLibrary> library;
   };
 

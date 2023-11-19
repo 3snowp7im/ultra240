@@ -6,4 +6,10 @@ namespace ultra::renderer {
 
   void quit();
 
+  void predraw();
+
+  void postdraw();
+
+  extern uint32_t time;
+
 }

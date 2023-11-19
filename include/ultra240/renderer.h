@@ -8,8 +8,8 @@
 
 namespace ultra::renderer {
 
-  /** Set the frame buffer to render to. */
-  void set_frame_buffer(void* frame_buffer);
+  /** Get the handle to the texture the renderer draws into. */
+  uintptr_t get_render_texture();
 
   /** Internal pointer to tileset loaded in graphics hardware. */
   struct TilesetHandle;
