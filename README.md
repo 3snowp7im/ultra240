@@ -26,6 +26,9 @@ however you may not distribute it in any form for any reason.
   utilities to compile [Tiled](https://mapeditor.org) project files into
   ULTRA240 binaries.
   
+* [Example game](https://github.com/3snowp7im/ultra240-example) - A sandbox
+  level used to test new library features.
+  
 ## Building
 
 ### Build dependencies
