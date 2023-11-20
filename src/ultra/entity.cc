@@ -503,9 +503,10 @@ namespace ultra {
     if (!force_restart && animation_controls == animation.animation_controls) {
       return true;
     }
+    auto tile_index = tileset.get_tile_index_by_name(animation_controls.name);
     if (!set_tile_index(
           *this,
-          tileset.get_tile_index_by_name(animation_controls.name),
+          tile_index,
           collision_box_type,
           boundaries,
           true
