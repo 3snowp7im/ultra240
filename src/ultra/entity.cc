@@ -539,7 +539,7 @@ namespace ultra {
       if (animation.counter++ == animation.animation_tile->duration) {
         switch (animation.animation_controls.direction) {
         case AnimationControls::Direction::Normal:
-          if (++animation.animation_tile
+          if (std::next(animation.animation_tile)
               == animation.tile->animation_tiles.end()) {
             if (animation.animation_controls.loop) {
               animation.animation_tile =
@@ -547,17 +547,21 @@ namespace ultra {
             } else {
               animation.playing = false;
             }
+          } else {
+            animation.animation_tile++;
           }
           break;
         case AnimationControls::Direction::Reverse:
-          if (animation.animation_tile--
+          if (std::prev(animation.animation_tile)
               == animation.tile->animation_tiles.begin()) {
             if (animation.animation_controls.loop) {
               animation.animation_tile =
-                --animation.tile->animation_tiles.end();
+                std::prev(animation.tile->animation_tiles.end());
             } else {
               animation.playing = false;
             }
+          } else {
+            animation.animation_tile--;
           }
           break;
         }
