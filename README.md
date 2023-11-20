@@ -4,12 +4,11 @@ ULTRA240 is a minimal 2D tile game library designed for retro-style platformers.
 Like game consoles of the 15kHz era, ULTRA240 is designed for rendering a 240p
 view.
 
-This project aims to be an easily integratable library and not a framework. You
-must create a window and a rendering context using a graphics library of your
-choice. The reasoning is that there are plenty of existing windowing and
-graphics libraries with more capabilities than I could hope to implement. Rather
-than create a framework that attempts to do it all, my time is better spent
-perfecting a the small subset of features that relate to a specific use case.
+This project aims to be an easily integratable library and not a framework.
+The reasoning is that there are plenty of existing windowing and graphics
+libraries with more capabilities than I could hope to implement. Rather than
+create a framework that attempts to do it all, my time is better spent
+perfecting a small subset of features that relate to a specific use case.
 
 ULTRA240 has three major features:
 
