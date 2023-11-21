@@ -514,17 +514,17 @@ namespace ultra {
         )) {
       return false;
     }
-    animation.tile = &tileset.tiles.at(tile_index);
+    animation.animation_tiles = &tileset.tiles.at(tile_index).animation_tiles;
     animation.animation_controls = animation_controls;
     animation.counter = 0;
-    if (animation.tile->animation_tiles.size()) {
+    if (animation.animation_tiles->size()) {
       animation.playing = true;
       switch (animation_controls.direction) {
       case AnimationControls::Direction::Normal:
-        animation.animation_tile = animation.tile->animation_tiles.begin();
+        animation.animation_tile = animation.animation_tiles->begin();
         break;
       case AnimationControls::Direction::Reverse:
-        animation.animation_tile = --animation.tile->animation_tiles.end();
+        animation.animation_tile = --animation.animation_tiles->end();
         break;
       }
     } else {
@@ -542,10 +542,10 @@ namespace ultra {
         switch (animation.animation_controls.direction) {
         case AnimationControls::Direction::Normal:
           if (std::next(animation.animation_tile)
-              == animation.tile->animation_tiles.end()) {
+              == animation.animation_tiles->end()) {
             if (animation.animation_controls.loop) {
               animation.animation_tile =
-                animation.tile->animation_tiles.begin();
+                animation.animation_tiles->begin();
             } else {
               animation.playing = false;
             }
@@ -555,10 +555,10 @@ namespace ultra {
           break;
         case AnimationControls::Direction::Reverse:
           if (std::prev(animation.animation_tile)
-              == animation.tile->animation_tiles.begin()) {
+              == animation.animation_tiles->begin()) {
             if (animation.animation_controls.loop) {
               animation.animation_tile =
-                std::prev(animation.tile->animation_tiles.end());
+                std::prev(animation.animation_tiles->end());
             } else {
               animation.playing = false;
             }

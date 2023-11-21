@@ -29,10 +29,13 @@ namespace ultra {
 
       /** Signal defining how animation frames advance. */
       enum Direction {
+
         /** Animation tiles are incremented. */
         Normal,
+
         /** Animation tiles are decremented. */
         Reverse,
+
       } direction;
 
       /** Instance compare operator. */
@@ -211,7 +214,7 @@ namespace ultra {
 
     /**
      * Find a collision between the entity and a boundary, if any. If there are
-     * no collision, the first element of the returned pair is false, and the
+     * no collisions, the first element of the returned pair is false, and the
      * the collision data contains no information.
      */
     virtual std::pair<bool, BoundaryCollision> get_boundary_collision(
@@ -227,22 +230,44 @@ namespace ultra {
       const std::vector<Entity*>& entities
     );
 
+    /** The tileset associated with this entity. */
     const Tileset& tileset;
 
+    /** The entity world position. */
     geometry::Vector<float> position;
 
+    /** The entity attributes. */
     Attributes attributes;
 
+    /** 
+     * The entity type.
+     *
+     * This field is not used by ULTRA240 and is instead meant for the
+     * application's notation.
+     */
     Hash<>::Type type;
 
+    /** Tile index used for rendering and collision detection. */
     uint16_t tile_index;
 
+    /** The current animation settings. */
     struct {
+
+      /** True if current animation is playing. */
       bool playing;
-      const Tileset::Tile* tile;
+
+      /** Pointer to the current animation's tiles. */
+      const std::vector<Tileset::Tile::AnimationTile>* animation_tiles;
+
+      /** The animation controls for the current animation. */
       AnimationControls animation_controls;
+
+      /** Frame counter for the current animation tile. */
       uint32_t counter;
+
+      /** Iterator to the current animation tile. */
       std::vector<Tileset::Tile::AnimationTile>::const_iterator animation_tile;
+
     } animation;
   };
 
