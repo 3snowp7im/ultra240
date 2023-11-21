@@ -254,6 +254,7 @@ namespace ultra {
                           }
                         }
                       }
+                      it++;
                     }
                   boxes_loop_break:
                     if (skip) {
