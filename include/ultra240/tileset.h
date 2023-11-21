@@ -64,7 +64,12 @@ namespace ultra {
       /** Read serialized tile data from stream. */
       void read(std::istream& stream);
 
-      /** The tile data name. */
+      /**
+       * The tile data name.
+       *
+       * This field is not used by ULTRA240 and is intended for the
+       * application's own notation.
+       */
       Hash<>::Type name;
 
       /**
@@ -98,10 +103,12 @@ namespace ultra {
     /** Name of bitmap used for rendering. */
     std::string source;
 
-    std::map<uint32_t, uint16_t> name_map;
-
     /** Code library associated with this tileset. */
     std::unique_ptr<DynamicLibrary> library;
+
+  private:
+
+    std::map<uint32_t, uint16_t> name_map;
   };
 
 }

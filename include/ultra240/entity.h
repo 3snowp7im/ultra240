@@ -242,8 +242,8 @@ namespace ultra {
     /** 
      * The entity type.
      *
-     * This field is not used by ULTRA240 and is instead meant for the
-     * application's notation.
+     * This field is not used by ULTRA240 and is intended for the application's
+     * own notation.
      */
     Hash<>::Type type;
 

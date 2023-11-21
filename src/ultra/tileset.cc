@@ -18,6 +18,7 @@ namespace ultra {
 
   static void read(
     Tileset& ts,
+    std::map<uint32_t, uint16_t>& name_map,
     std::unique_ptr<DynamicLibrary>& library,
     std::istream& stream
   ) {
@@ -57,18 +58,18 @@ namespace ultra {
       uint16_t tile_index;
       stream.read(reinterpret_cast<char*>(&tile_index), sizeof(uint16_t));
       ts.tiles[tile_index].read(stream);
-      ts.name_map.insert({ts.tiles[tile_index].name, tile_index});
+      name_map.insert({ts.tiles[tile_index].name, tile_index});
     }
   }
 
   Tileset::Tileset(const std::string& name) {
     std::ifstream file(ultra::data_dir + "/tileset/" + name + ".bin");
-    read(*this, library, file);
+    read(*this, name_map, library, file);
     file.close();
   }
 
   Tileset::Tileset(std::istream& stream) {
-    read(*this, library, stream);
+    read(*this, name_map, library, stream);
   }
 
   Tileset::Tile::Tile() {}

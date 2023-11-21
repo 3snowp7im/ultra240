@@ -76,8 +76,8 @@ namespace ultra {
         /** 
          * The initial entity state data.
          *
-         * There is no standard format for the entity state. It is up to the
-         * associated code library to interpret it.
+         * There is no standard format for the entity state, it is left up to
+         * the application to interpret it.
          */
         uint32_t state;
       };
