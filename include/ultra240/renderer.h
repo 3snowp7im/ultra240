@@ -50,6 +50,6 @@ namespace ultra::renderer {
   void unload_world();
 
   /** Render the current frame to the frame buffer. */
-  void render();
+  void render(bool advance_time = true);
 
 }

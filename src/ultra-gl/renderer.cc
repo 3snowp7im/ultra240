@@ -1304,11 +1304,13 @@ namespace ultra::renderer {
     renderer->unload_world();
   }
 
-  void render() {
+  void render(bool advance_time) {
     predraw();
     renderer->render();
     postdraw();
-    time++;
+    if (advance_time) {
+      time++;
+    }
   }
 
 }
