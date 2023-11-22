@@ -230,6 +230,7 @@ namespace ultra {
                     // intersect with this boundary.
                     auto& curr_boxes = last_tile.collision_boxes;
                     auto it = curr_boxes.find(collision_box_type);
+                    bool is_inside = true;
                     bool skip = false;
                     while (it != curr_boxes.end()) {
                       const auto& boxes = it->second;
@@ -247,8 +248,13 @@ namespace ultra {
                           {pos + box.size, pos + box.size.as_y()},
                           {pos + box.size.as_y(), pos},
                         };
-                        for (const auto& edge: edges) {
-                          if (!boundary.intersection(edge, epsilon).is_nan()) {
+                        for (const auto& edge : edges) {
+                          auto inter = boundary.intersection(edge, epsilon);
+                          if (!inter.is_nan()
+                              && inter != edge.p
+                              && inter != edge.q
+                              && inter != boundary.p
+                              && inter != boundary.q) {
                             skip = true;
                             goto boxes_loop_break;
                           }
@@ -256,8 +262,38 @@ namespace ultra {
                       }
                       it++;
                     }
+                    // Check to see if the current tile collision boxes are
+                    // "outside" the boundary.
+                    it = curr_boxes.find(collision_box_type);
+                    while (it != curr_boxes.end()) {
+                      const auto& boxes = it->second;
+                      for (auto pair : boxes) {
+                        auto box = pair.second;
+                        auto pos = entity.get_collision_box_position(box);
+                        box.position += pos;
+                        geometry::Vector<float> corners[] = {
+                          pos,
+                          pos + box.size.as_x(),
+                          pos + box.size,
+                          pos + box.size.as_y(),
+                        };
+                        for (int j = 0; j < 4; j++) {
+                          auto corner = corners[j] - boundary.p;
+                          auto bvec = boundary.to_vector();
+                          auto cross = bvec.cross(corner);
+                          if (bvec.cross(corner) > 0) {
+                            is_inside = false;
+                            break;
+                          }
+                        }
+                        if (!is_inside) {
+                          break;
+                        }
+                      }
+                      it++;
+                    }
                   boxes_loop_break:
-                    if (skip) {
+                    if (skip || !is_inside) {
                       continue;
                     }
                   }
@@ -584,8 +620,7 @@ namespace ultra {
     World::Boundaries& boundaries,
     Entity* player,
     const std::vector<Entity*>& entities
-  ) {
-  }
+  ) {}
 
   std::pair<bool, Entity::BoundaryCollision> Entity::get_boundary_collision(
     geometry::Vector<float> force,
