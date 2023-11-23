@@ -97,6 +97,15 @@ namespace ultra {
     // Read map width and height.
     stream.read(reinterpret_cast<char*>(&size.x), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&size.y), sizeof(uint16_t));
+    // Read properties.
+    uint8_t properties_count;
+    stream.read(reinterpret_cast<char*>(&properties_count), sizeof(uint8_t));
+    for (int i = 0; i < properties_count; i++) {
+      uint32_t name, value;
+      stream.read(reinterpret_cast<char*>(&name), sizeof(Hash<>::Type));
+      stream.read(reinterpret_cast<char*>(&value), sizeof(uint32_t));
+      properties.emplace(name, value);
+    }
     // Read map tileset count.
     uint8_t map_tileset_count;
     stream.read(
@@ -233,6 +242,8 @@ namespace ultra {
     stream.read(reinterpret_cast<char*>(&position.x), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&position.y), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&tile_index), sizeof(uint16_t));
+    stream.read(reinterpret_cast<char*>(&type), sizeof(uint16_t));
+    stream.read(reinterpret_cast<char*>(&id), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&state), sizeof(uint32_t));
   }
 

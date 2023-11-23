@@ -434,12 +434,10 @@ namespace ultra {
     const Tileset& tileset,
     const geometry::Vector<float>& position,
     Attributes attributes,
-    Hash<>::Type type,
     uint16_t tile_index
   ) : tileset(tileset),
       position(position),
       attributes(attributes),
-      type(type),
       tile_index(0),
       animation({.playing = false}) {
     if (!set_tile_index(
@@ -459,12 +457,10 @@ namespace ultra {
     const Tileset& tileset,
     const geometry::Vector<float>& position,
     Attributes attributes,
-    Hash<>::Type type,
     AnimationControls animation_controls
   ) : tileset(tileset),
       position(position),
       attributes(attributes),
-      type(type),
       tile_index(0) {
     if (!animate(collision_box_type, boundaries, animation_controls)) {
       throw std::runtime_error("Entity: created entity out of bounds");

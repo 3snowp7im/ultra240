@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <ultra240/hash.h>
 #include <ultra240/geometry.h>
 #include <ultra240/tileset.h>
 #include <ultra240/vector_allocator.h>
@@ -73,6 +75,12 @@ namespace ultra {
         /** The initial entity position. */
         geometry::Vector<uint32_t> position;
 
+        /** Entity type. */
+        uint16_t type;
+
+        /** Entity ID. */
+        uint16_t id;
+
         /** 
          * The initial entity state data.
          *
@@ -90,6 +98,9 @@ namespace ultra {
 
       /** Map dimensions. */
       geometry::Vector<uint16_t> size;
+
+      /** Map properties. */
+      std::unordered_map<Hash<>::Type, uint32_t> properties;
 
       /** The index of the entities layer. */
       uint8_t entities_index;

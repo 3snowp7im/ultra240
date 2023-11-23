@@ -152,7 +152,6 @@ namespace ultra {
       const Tileset& tileset,
       const geometry::Vector<float>& position,
       Attributes attributes,
-      Hash<>::Type type,
       uint16_t tile_index = 0
     );
 
@@ -163,7 +162,6 @@ namespace ultra {
       const Tileset& tileset,
       const geometry::Vector<float>& position,
       Attributes attributes,
-      Hash<>::Type type,
       AnimationControls animation_controls
     );
 
@@ -239,14 +237,6 @@ namespace ultra {
     /** The entity attributes. */
     Attributes attributes;
 
-    /** 
-     * The entity type.
-     *
-     * This field is not used by ULTRA240 and is intended for the application's
-     * own notation.
-     */
-    Hash<>::Type type;
-
     /** Tile index used for rendering and collision detection. */
     uint16_t tile_index;
 
@@ -305,6 +295,8 @@ namespace ultra {
       return tile.library->load_symbol<Entity::create<
         T,
         uint16_t,
+        uint16_t,
+        uint16_t,
         uint32_t
       >>("create_entity")(
         boundaries,
@@ -312,11 +304,15 @@ namespace ultra {
         entity.position,
         attributes,
         entity.tile_index,
+        entity.type,
+        entity.id,
         entity.state
       );
     }
     return entity.tileset->library->load_symbol<Entity::create<
       T,
+      uint16_t,
+      uint16_t,
       uint16_t,
       uint32_t
     >>("create_entity")(
@@ -325,6 +321,8 @@ namespace ultra {
       entity.position,
       attributes,
       entity.tile_index,
+      entity.type,
+      entity.id,
       entity.state
     );
   }

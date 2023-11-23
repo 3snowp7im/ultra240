@@ -26,30 +26,41 @@ The map header offsets are found in the world file header.
 | `offset+02` | `2` | Signed Y position of the map. |
 | `offset+04` | `2` | Width of the map (`Mw`). |
 | `offset+06` | `2` | Height of the map (`Mh`). |
-| `offset+08` | `1` | Count of map tilesets (`T`) in the map. |
-| `offset+09` | `4*T` | Offsets of the map tilesets. |
-| `offset+09+4*T` | `1` | Count of entity tilesets (`U`) in the map. |
-| `offset+0a+4*T` | `4*U` | Offsets of the entity tilesets. |
-| `offset+0a+4*(T+U)` | `1` | Count of map tile layers (`L`) in the map. |
-| `offset+0b+4*(T+U)` | `4*L` | Offsets of the map tile layers. |
-| `offset+0b+4*(T+U+L)` | `1` | Layer index where entities should be rendered. |
-| `offset+0c+4*(T+U+L)` | `2` | Count of entities in the map (`E`). |
-| `offset+0e+4*(T+U+L)` | `10*E` | Entities in the map. |
-| `offset+0e+4*(T+U+L)+10*E` | `2*E` | *X sorted*. |
-| `offset+0e+4*(T+U+L)+12*E` | `2*E` | *X+W sorted*. |
-| `offset+0e+4*(T+U+L)+14*E` | `2*E` | *Y sorted*. |
-| `offset+0e+4*(T+U+L)+16*E` | `2*E` | *Y+H sorted*. |
+| `offset+08` | `1` | Count of map properties (`P`). |
+| `offset+09` | `8*P` | Map properties. |
+| `offset+09+8*P` | `1` | Count of map tilesets (`T`) in the map. |
+| `offset+0a+8*P` | `4*T` | Offsets of the map tilesets. |
+| `offset+0a+8*P+4*T` | `1` | Count of entity tilesets (`U`) in the map. |
+| `offset+0b+8*P+4*T` | `4*U` | Offsets of the entity tilesets. |
+| `offset+0b+8*P+4*(T+U)` | `1` | Count of map tile layers (`L`) in the map. |
+| `offset+0c+8*P+4*(T+U)` | `4*L` | Offsets of the map tile layers. |
+| `offset+0c+8*P+4*(T+U+L)` | `1` | Entities layer render index. |
+| `offset+0d+8*P+4*(T+U+L)` | `2` | Count of entities in the map (`E`). |
+| `offset+0f+8*P+4*(T+U+L)` | `10*E` | Entities in the map. |
+| `offset+0f+8*P+4*(T+U+L)+10*E` | `2*E` | *L sorted*. |
+| `offset+0f+8*P+4*(T+U+L)+12*E` | `2*E` | *R sorted*. |
+| `offset+0f+8*P+4*(T+U+L)+14*E` | `2*E` | *T sorted*. |
+| `offset+0f+8*P+4*(T+U+L)+16*E` | `2*E` | *B sorted*. |
 
-Note that the sorted entity sequences  are specified as follows:
+Note that the sorted entity sequences are specified as follows:
 
-* *X sorted* are the entity indices of each entity in the map in ascending order
+* *L sorted* are the entity indices of each entity in the map in ascending order
   of their position's X component.
-* *X+W sorted* are the entity indices of each entity in the map in ascending
+* *R sorted* are the entity indices of each entity in the map in ascending
   order of the sum of their position's X component and their tile width.
-* *Y sorted* are the entity indices of each entity in the map in ascending order
+* *T sorted* are the entity indices of each entity in the map in ascending order
   of their position's Y component.
-* *Y+H sorted* are the entity indices of each entity in the map in ascending
+* *B sorted* are the entity indices of each entity in the map in ascending
   order of the sum of their position's Y component and their tile height.
+
+## Map property format
+
+The following table specifies the byte sequence of the map property data:
+
+| Position | Size | Description |
+| -- | -- | -- |
+| `00` | `4` | Property name. |
+| `04` | `4` | Property value. |
 
 ## Tileset format
 
@@ -81,7 +92,9 @@ The following table specifies the byte sequence of entity data:
 | `00` | `2` | X position of the entity in pixels. |
 | `02` | `2` | Y position of the entity in pixels. |
 | `04` | `2` | Entity tile ID (`Tid`). |
-| `06` | `4` | Entity state. |
+| `06` | `2` | Entity type. |
+| `08` | `2` | Entity ID. |
+| `0a` | `4` | Entity state. |
 
 ## Tiles
 
