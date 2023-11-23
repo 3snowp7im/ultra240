@@ -112,4 +112,10 @@ namespace ultra {
   template <typename T>
   using HashMap = std::map<Hash<>::Type, T>;
 
+  inline uint32_t crc_(uint32_t h) {
+    return h;
+  }
+
+#define crc(str) crc_(ultra::Hash<decltype(str)>::value)
+
 }
