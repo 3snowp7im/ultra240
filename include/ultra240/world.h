@@ -42,6 +42,9 @@ namespace ultra {
           const geometry::Vector<uint16_t>& size
         );
 
+        /** Name of this layer. */
+        ultra::Hash<>::Type name;
+
         /** The rendered parallax of the layer. */
         geometry::Vector<float> parallax;
 
@@ -62,6 +65,9 @@ namespace ultra {
 
         /** Pointer to the entity tileset. */
         const Tileset* tileset;
+
+        /** Name of the layer entity is on. */
+        ultra::Hash<>::Type layer_name;
 
         /** The initial tile index. */
         uint16_t tile_index;
@@ -101,9 +107,6 @@ namespace ultra {
 
       /** Map properties. */
       std::unordered_map<Hash<>::Type, uint32_t> properties;
-
-      /** The index of the entities layer. */
-      uint8_t entities_index;
 
       /** Collection of map tilesets. */
       std::vector<std::shared_ptr<Tileset>> map_tilesets;

@@ -783,29 +783,104 @@ namespace ultra::renderer {
       }
     }
 
-    void render() {
-      // Enable depth test
-      GL_CHECK(glEnable(GL_DEPTH_TEST));
-      GL_CHECK(glDepthFunc(GL_LESS));
-
-      // Enable alpha blending.
-      GL_CHECK(glEnable(GL_BLEND));
-      GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-
-      // Render to framebuffer.
-      GL_CHECK(
-        glBindFramebuffer(
-          GL_FRAMEBUFFER,
-          framebuffers[FRAMEBUFFER_IDX_RENDER]
-        )
-      );
+    void clear() {
+      bind_framebuffer();
       GL_CHECK(glViewport(0, 0, 256, 240));
       GL_CHECK(glClearColor(0, 0, 0, 1));
       GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+      unbind_framebuffer();
+    }
 
-      // Render background tiles.
-      render_tiles(0, maps[map_index].entities_index);
+    void render_tile_layers(
+      size_t start_layer_idx,
+      ssize_t layer_count
+    ) {
+      if (layer_count <= 0) {
+        return;
+      }
+      bind_framebuffer();
+      // Use the tile program;
+      tile_program->use();
+      // Set the tileset uniforms.
+      GL_CHECK(glUniform1i(uniform_locations.tile.animations, 1));
+      GL_CHECK(glActiveTexture(GL_TEXTURE0 + 0));
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]));
+      GL_CHECK(glActiveTexture(GL_TEXTURE0 + 1));
+      GL_CHECK(
+        glBindTexture(
+          GL_TEXTURE_2D_ARRAY,
+          textures[TEXTURE_IDX_ANIMATION]
+        )
+      );
+      // Set uniforms linking texture index with tileset index.
+      auto texture = map_tile_textures[map_index].begin();
+      for (int i = 0;
+           texture != map_tile_textures[map_index].end();
+           i++, texture++) {
+        // Set the tileset indices uniform values.
+        glUniform1ui(
+          uniform_locations.tile.tileset_indices[i],
+          (*texture)->index
+        );
+        // Set the tileset size uniform values.
+        glUniform2ui(
+          uniform_locations.tile.tileset_sizes[i],
+          (*texture)->size.x,
+          (*texture)->size.y
+        );
+      }
+      // Set the layer parallax uniform values.
+      for (int i = 0; i < maps[map_index].layers.size(); i++) {
+        glUniform2f(
+          uniform_locations.tile.layer_parallax[i],
+          maps[map_index].layers[i].parallax.x,
+          maps[map_index].layers[i].parallax.y
+        );
+      }
+      // Set the camera position uniform value.
+      GL_CHECK(
+        glUniform2f(
+          uniform_locations.tile.camera_position,
+          camera_position.x,
+          camera_position.y
+        )
+      );
+      // Set the map size uniform value.
+      GL_CHECK(
+        glUniform2ui(
+          uniform_locations.tile.map_size,
+          maps[map_index].size.x,
+          maps[map_index].size.y
+        )
+      );
+      // Set the time uniform value.
+      GL_CHECK(glUniform1ui(uniform_locations.tile.time, time));
+      // Draw the tiles
+      size_t map_area = maps[map_index].size.x * maps[map_index].size.y;
+      size_t tile_offset = map_area * start_layer_idx;
+      size_t tile_count = map_area * layer_count;
+      GL_CHECK(glBindVertexArray(vertex_arrays[BUFFER_IDX_TILE]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_TILE]));
+      GL_CHECK(
+        glVertexAttribIPointer(
+          0,
+          1,
+          GL_UNSIGNED_SHORT,
+          sizeof(GLushort),
+          reinterpret_cast<void*>(0)
+        )
+      );
+      GL_CHECK(glEnableVertexAttribArray(0));
+      GL_CHECK(glDrawArrays(GL_POINTS, tile_offset, tile_count));
+      GL_CHECK(glBindVertexArray(0));
+      unbind_framebuffer();
+    }
 
+    void render_entities(
+      const std::vector<const EntityHandle*>& entities,
+      size_t layer_index
+    ) {
+      bind_framebuffer();
       // Use the sprite program.
       sprite_program->use();
       // Set the tileset uniform.
@@ -859,7 +934,7 @@ namespace ultra::renderer {
       GL_CHECK(
         glUniform1ui(
           uniform_locations.sprite.layer_index,
-          maps[map_index].entities_index
+          layer_index
         )
       );
       // Set the sprite count uniform value.
@@ -871,29 +946,35 @@ namespace ultra::renderer {
       );
       // Upload the sprite attributes data.
       SpriteAttributes* curr_attrs = sprite_data;
-      for (const auto& sprite : sprites) {
-        SpriteAttributes attrs = {
-          .position = {sprite.entity->position.x, sprite.entity->position.y},
-          .index = sprite_indices[sprite.texture->index],
-          .tile_index = sprite.entity->tile_index,
-          .texture_coords_tl = {0, 0},
-          .texture_coords_tr = {1, 0},
-          .texture_coords_bl = {0, 1},
-          .texture_coords_br = {1, 1},
-        };
-        if (sprite.entity->attributes.flip_x) {
-          attrs.texture_coords_tl[0] = 1;
-          attrs.texture_coords_tr[0] = 0;
-          attrs.texture_coords_bl[0] = 1;
-          attrs.texture_coords_br[0] = 0;
+      size_t entities_count = 0;
+      for (const auto& handle : entities) {
+        auto it = handle->begin;
+        for (int i = 0; i < handle->count; i++, it++) {
+          const auto& sprite = *it;
+          SpriteAttributes attrs = {
+            .position = {sprite.entity->position.x, sprite.entity->position.y},
+            .index = sprite_indices[sprite.texture->index],
+            .tile_index = sprite.entity->tile_index,
+            .texture_coords_tl = {0, 0},
+            .texture_coords_tr = {1, 0},
+            .texture_coords_bl = {0, 1},
+            .texture_coords_br = {1, 1},
+          };
+          if (sprite.entity->attributes.flip_x) {
+            attrs.texture_coords_tl[0] = 1;
+            attrs.texture_coords_tr[0] = 0;
+            attrs.texture_coords_bl[0] = 1;
+            attrs.texture_coords_br[0] = 0;
+          }
+          if (sprite.entity->attributes.flip_y) {
+            attrs.texture_coords_tl[1] = 1;
+            attrs.texture_coords_tr[1] = 1;
+            attrs.texture_coords_bl[1] = 0;
+            attrs.texture_coords_br[1] = 0;
+          }
+          *curr_attrs++ = attrs;
         }
-        if (sprite.entity->attributes.flip_y) {
-          attrs.texture_coords_tl[1] = 1;
-          attrs.texture_coords_tr[1] = 1;
-          attrs.texture_coords_bl[1] = 0;
-          attrs.texture_coords_br[1] = 0;
-        }
-        *curr_attrs++ = attrs;
+        entities_count += handle->count;
       }
       GL_CHECK(glBindVertexArray(vertex_arrays[BUFFER_IDX_SPRITE]));
       GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_SPRITE]));
@@ -977,22 +1058,36 @@ namespace ultra::renderer {
       GL_CHECK(glEnableVertexAttribArray(4));
       GL_CHECK(glEnableVertexAttribArray(5));
       GL_CHECK(glEnableVertexAttribArray(6));
-      GL_CHECK(glDrawArrays(GL_POINTS, 0, sprites.size()));
+      GL_CHECK(glDrawArrays(GL_POINTS, 0, entities_count));
       GL_CHECK(glBindVertexArray(0));
-
-      // Render foreground tiles.
-      render_tiles(
-        maps[map_index].entities_index,
-        maps[map_index].layers.size() - maps[map_index].entities_index
-      );
-
-      // Unbind framebuffer.
-      GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+      unbind_framebuffer();
     }
 
     geometry::Vector<float> camera_position;
 
   private:
+
+    void bind_framebuffer() {
+      // Enable depth test
+      GL_CHECK(glEnable(GL_DEPTH_TEST));
+      GL_CHECK(glDepthFunc(GL_LESS));
+
+      // Enable alpha blending.
+      GL_CHECK(glEnable(GL_BLEND));
+      GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+      // Render to framebuffer.
+      GL_CHECK(
+        glBindFramebuffer(
+          GL_FRAMEBUFFER,
+          framebuffers[FRAMEBUFFER_IDX_RENDER]
+        )
+      );
+    }
+
+    void unbind_framebuffer() {
+      GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    }
 
     TextureList::iterator add_tilesets(
       const Tileset* const* tilesets,
@@ -1094,89 +1189,6 @@ namespace ultra::renderer {
         }
         texture_list.erase(begin, it);
       }
-    }
-
-    void render_tiles(
-      size_t start_layer_idx,
-      ssize_t layer_count
-    ) {
-      if (layer_count <= 0) {
-        return;
-      }
-      // Use the tile program;
-      tile_program->use();
-      // Set the tileset uniforms.
-      GL_CHECK(glUniform1i(uniform_locations.tile.animations, 1));
-      GL_CHECK(glActiveTexture(GL_TEXTURE0 + 0));
-      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]));
-      GL_CHECK(glActiveTexture(GL_TEXTURE0 + 1));
-      GL_CHECK(
-        glBindTexture(
-          GL_TEXTURE_2D_ARRAY,
-          textures[TEXTURE_IDX_ANIMATION]
-        )
-      );
-      // Set uniforms linking texture index with tileset index.
-      auto texture = map_tile_textures[map_index].begin();
-      for (int i = 0;
-           texture != map_tile_textures[map_index].end();
-           i++, texture++) {
-        // Set the tileset indices uniform values.
-        glUniform1ui(
-          uniform_locations.tile.tileset_indices[i],
-          (*texture)->index
-        );
-        // Set the tileset size uniform values.
-        glUniform2ui(
-          uniform_locations.tile.tileset_sizes[i],
-          (*texture)->size.x,
-          (*texture)->size.y
-        );
-      }
-      // Set the layer parallax uniform values.
-      for (int i = 0; i < maps[map_index].layers.size(); i++) {
-        glUniform2f(
-          uniform_locations.tile.layer_parallax[i],
-          maps[map_index].layers[i].parallax.x,
-          maps[map_index].layers[i].parallax.y
-        );
-      }
-      // Set the camera position uniform value.
-      GL_CHECK(
-        glUniform2f(
-          uniform_locations.tile.camera_position,
-          camera_position.x,
-          camera_position.y
-        )
-      );
-      // Set the map size uniform value.
-      GL_CHECK(
-        glUniform2ui(
-          uniform_locations.tile.map_size,
-          maps[map_index].size.x,
-          maps[map_index].size.y
-        )
-      );
-      // Set the time uniform value.
-      GL_CHECK(glUniform1ui(uniform_locations.tile.time, time));
-      // Draw the tiles
-      size_t map_area = maps[map_index].size.x * maps[map_index].size.y;
-      size_t tile_offset = map_area * start_layer_idx;
-      size_t tile_count = map_area * layer_count;
-      GL_CHECK(glBindVertexArray(vertex_arrays[BUFFER_IDX_TILE]));
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_TILE]));
-      GL_CHECK(
-        glVertexAttribIPointer(
-          0,
-          1,
-          GL_UNSIGNED_SHORT,
-          sizeof(GLushort),
-          reinterpret_cast<void*>(0)
-        )
-      );
-      GL_CHECK(glEnableVertexAttribArray(0));
-      GL_CHECK(glDrawArrays(GL_POINTS, tile_offset, tile_count));
-      GL_CHECK(glBindVertexArray(0));
     }
 
     std::unique_ptr<Program> tile_program;
@@ -1304,13 +1316,19 @@ namespace ultra::renderer {
     renderer->unload_world();
   }
 
-  void render(bool advance_time) {
-    predraw();
-    renderer->render();
-    postdraw();
-    if (advance_time) {
-      time++;
-    }
+  void clear() {
+    renderer->clear();
+  }
+
+  void render_tile_layers(size_t start_layer_idx, ssize_t layer_count) {
+    renderer->render_tile_layers(start_layer_idx, layer_count);
+  }
+
+  void render_entities(
+    const std::vector<const EntityHandle*>& entities,
+    size_t layer_index
+  ) {
+    renderer->render_entities(entities, layer_index);
   }
 
 }

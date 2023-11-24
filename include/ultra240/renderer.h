@@ -49,7 +49,22 @@ namespace ultra::renderer {
   /** Unload the world from the hraphics hardware. */
   void unload_world();
 
-  /** Render the current frame to the frame buffer. */
-  void render(bool advance_time = true);
+  /** Clear the render texture. */
+  void clear();
+
+  /** Render tile layers. */
+  void render_tile_layers(
+    size_t start_layer_idx,
+    ssize_t layer_count
+  );
+
+  /** Render entities. */
+  void render_entities(
+    const std::vector<const EntityHandle*>& entities,
+    size_t layer_index
+  );
+
+  /** Advance frame counter. */
+  void advance();
 
 }

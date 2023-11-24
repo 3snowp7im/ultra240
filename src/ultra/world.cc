@@ -153,8 +153,6 @@ namespace ultra {
         sizeof(uint32_t)
       );
     }
-    // Read entity layer index.
-    stream.read(reinterpret_cast<char*>(&entities_index), sizeof(uint8_t));
     // Read entity count.
     uint16_t entity_count;
     stream.read(reinterpret_cast<char*>(&entity_count), sizeof(uint16_t));
@@ -222,6 +220,8 @@ namespace ultra {
     std::istream& stream,
     const geometry::Vector<uint16_t>& size
   ) {
+    // Read name.
+    stream.read(reinterpret_cast<char*>(&name), sizeof(uint32_t));
     // Read parallax.
     uint8_t pn, pd;
     stream.read(reinterpret_cast<char*>(&pn), sizeof(uint8_t));
@@ -239,6 +239,7 @@ namespace ultra {
   }
 
   World::Map::Entity::Entity(std::istream& stream) {
+    stream.read(reinterpret_cast<char*>(&layer_name), sizeof(uint32_t));
     stream.read(reinterpret_cast<char*>(&position.x), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&position.y), sizeof(uint16_t));
     stream.read(reinterpret_cast<char*>(&tile_index), sizeof(uint16_t));
