@@ -11,6 +11,7 @@ in VS_OUT {
   uvec2 size;
   uvec3 texture_pos;
   uvec2 texture_coords[4];
+  mat3 transform;
   float alpha;
 } geom_in[];
 
@@ -27,13 +28,16 @@ void build_tile(
   uvec2 size,
   uvec3 texture_pos,
   uvec2 texture_coords[4],
+  mat3 transform,
   float alpha
 ) {
-  uvec2 x = uvec2(size.x, 0u);
-  uvec2 y = uvec2(0u, size.y);
+  uvec3 a = uvec3(0u, 0u, 1u);
+  uvec3 x = uvec3(size.x, 0u, 1u);
+  uvec3 y = uvec3(0u, size.y, 1u);
+  uvec3 b = uvec3(size, 1u);
   ivec2 s = ivec2(size.x, -size.y);
   // Top left.
-  gl_Position = vec4(map_transform(pos.xy), pos.zw);
+  gl_Position = vec4(map_transform(pos.xy + (transform * a).xy), pos.zw);
   frag_texture_coords = vec3(
     ivec2(texture_pos.xy) + s * ivec2(texture_coords[0]),
     texture_pos.z
@@ -41,7 +45,7 @@ void build_tile(
   frag_alpha = alpha;
   EmitVertex();
   // Top right.
-  gl_Position = vec4(map_transform(pos.xy + x), pos.zw);
+  gl_Position = vec4(map_transform(pos.xy + (transform * x).xy), pos.zw);
   frag_texture_coords = vec3(
     ivec2(texture_pos.xy) + s * ivec2(texture_coords[1]),
     texture_pos.z
@@ -49,7 +53,7 @@ void build_tile(
   frag_alpha = alpha;
   EmitVertex();
   // Bottom left.
-  gl_Position = vec4(map_transform(pos.xy + y), pos.zw);
+  gl_Position = vec4(map_transform(pos.xy + (transform * y).xy), pos.zw);
   frag_texture_coords = vec3(
     ivec2(texture_pos.xy) + s * ivec2(texture_coords[2]),
     texture_pos.z
@@ -57,7 +61,7 @@ void build_tile(
   frag_alpha = alpha;
   EmitVertex();
   // Bottom right.
-  gl_Position = vec4(map_transform(pos.xy + x + y), pos.zw);
+  gl_Position = vec4(map_transform(pos.xy + (transform * b).xy), pos.zw);
   frag_texture_coords = vec3(
     ivec2(texture_pos.xy) + s * ivec2(texture_coords[3]),
     texture_pos.z
@@ -74,6 +78,7 @@ void main() {
     geom_in[0].size,
     geom_in[0].texture_pos,
     geom_in[0].texture_coords,
+    geom_in[0].transform,
     geom_in[0].alpha
   );
 }

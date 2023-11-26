@@ -240,6 +240,16 @@ namespace ultra {
     /** Tile index used for rendering and collision detection. */
     uint16_t tile_index;
 
+    /**
+     * Transformation matrix used for rendering.
+     *
+     * This is initialized to an identity matrix via all constructors.
+     */
+    std::array<float, 9> transform;
+
+    /** Opacity used for rendering. */
+    float opacity;
+
     /** The current animation settings. */
     struct {
 

@@ -6,6 +6,12 @@
 
 namespace ultra {
 
+  const static std::array<float, 9> identity = {
+    1., 0., 0.,
+    0., 1., 0.,
+    0., 0., 0.,
+  };
+
   const static float epsilon = 1.f / 256;
 
   bool Entity::has_collision_boxes(
@@ -439,7 +445,9 @@ namespace ultra {
       position(position),
       attributes(attributes),
       tile_index(0),
-      animation({.playing = false}) {
+      animation({.playing = false}),
+      transform(identity),
+      opacity(1) {
     if (!set_tile_index(
           *this,
           tile_index,
@@ -461,7 +469,9 @@ namespace ultra {
   ) : tileset(tileset),
       position(position),
       attributes(attributes),
-      tile_index(0) {
+      tile_index(0),
+      transform(identity),
+      opacity(1) {
     if (!animate(collision_box_type, boundaries, animation_controls)) {
       throw std::runtime_error("Entity: created entity out of bounds");
     }

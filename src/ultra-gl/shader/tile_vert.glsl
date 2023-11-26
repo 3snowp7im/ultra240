@@ -13,11 +13,13 @@ out VS_OUT {
   uvec2 size;
   uvec3 texture_pos;
   uvec2 texture_coords[4];
+  mat3 transform;
   float alpha;
 } vertex_out;
 
 void main() {
   vertex_out.alpha = float(tile_value > 0u);
+  vertex_out.transform = mat3(1.);
   // Convert tile value to tile index.
   uint tile_index = (tile_value & 0xfffu) - 1u;
   // Convert vertex ID to layer index.

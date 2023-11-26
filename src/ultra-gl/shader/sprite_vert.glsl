@@ -1,11 +1,15 @@
 #version 330 core
 layout (location = 0) in vec2 entity_position;
-layout (location = 1) in uint index;
-layout (location = 2) in uint tile_index;
-layout (location = 3) in uvec2 texture_coords_tl;
-layout (location = 4) in uvec2 texture_coords_tr;
-layout (location = 5) in uvec2 texture_coords_bl;
-layout (location = 6) in uvec2 texture_coords_br;
+layout (location = 1) in vec3 transform_col0;
+layout (location = 2) in vec3 transform_col1;
+layout (location = 3) in vec3 transform_col2;
+layout (location = 4) in uint index;
+layout (location = 5) in uint tile_index;
+layout (location = 6) in uvec2 texture_coords_tl;
+layout (location = 7) in uvec2 texture_coords_tr;
+layout (location = 8) in uvec2 texture_coords_bl;
+layout (location = 9) in uvec2 texture_coords_br;
+layout (location = 10) in float opacity;
 
 uniform uint tileset_indices[48];
 uniform uvec2 tileset_sizes[48];
@@ -19,12 +23,17 @@ out VS_OUT {
   uvec2 size;
   uvec3 texture_pos;
   uvec2 texture_coords[4];
+  mat3 transform;
   float alpha;
 } vertex_out;
 
 void main() {
-  // Always assume a sprite is rendered if it's in GPU data.
-  vertex_out.alpha = 1.f;
+  vertex_out.transform = mat3(
+    transform_col0,
+    transform_col1,
+    transform_col2
+  );
+  vertex_out.alpha = opacity;
   // Forward tile size to geometry shader.
   uvec2 tile_size = tile_sizes[index];
   vertex_out.size = tile_size;

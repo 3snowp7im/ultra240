@@ -124,13 +124,17 @@ namespace ultra::renderer {
   };
 
   struct SpriteAttributes {
-    float position[2];
-    uint8_t index;
-    uint16_t tile_index;
-    uint8_t texture_coords_tl[2];
-    uint8_t texture_coords_tr[2];
-    uint8_t texture_coords_bl[2];
-    uint8_t texture_coords_br[2];
+    GLfloat position[2];
+    GLfloat transform_col0[3];
+    GLfloat transform_col1[3];
+    GLfloat transform_col2[3];
+    GLubyte index;
+    GLushort tile_index;
+    GLubyte texture_coords_tl[2];
+    GLubyte texture_coords_tr[2];
+    GLubyte texture_coords_bl[2];
+    GLubyte texture_coords_br[2];
+    GLfloat opacity;
   };
 
   class Shader {
@@ -953,12 +957,28 @@ namespace ultra::renderer {
           const auto& sprite = *it;
           SpriteAttributes attrs = {
             .position = {sprite.entity->position.x, sprite.entity->position.y},
+            .transform_col0 = {
+              sprite.entity->transform[0],
+              sprite.entity->transform[1],
+              sprite.entity->transform[2],
+            },
+            .transform_col1 = {
+              sprite.entity->transform[3],
+              sprite.entity->transform[4],
+              sprite.entity->transform[5],
+            },
+            .transform_col2 = {
+              sprite.entity->transform[6],
+              sprite.entity->transform[7],
+              sprite.entity->transform[8],
+            },
             .index = sprite_indices[sprite.texture->index],
             .tile_index = sprite.entity->tile_index,
             .texture_coords_tl = {0, 0},
             .texture_coords_tr = {1, 0},
             .texture_coords_bl = {0, 1},
             .texture_coords_br = {1, 1},
+            .opacity = sprite.entity->opacity,
           };
           if (sprite.entity->attributes.flip_x) {
             attrs.texture_coords_tl[0] = 1;
@@ -998,8 +1018,38 @@ namespace ultra::renderer {
         )
       );
       GL_CHECK(
-        glVertexAttribIPointer(
+        glVertexAttribPointer(
           1,
+          3,
+          GL_FLOAT,
+          GL_FALSE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform_col0))
+        )
+      );
+      GL_CHECK(
+        glVertexAttribPointer(
+          2,
+          3,
+          GL_FLOAT,
+          GL_FALSE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform_col1))
+        )
+      );
+      GL_CHECK(
+        glVertexAttribPointer(
+          3,
+          3,
+          GL_FLOAT,
+          GL_FALSE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform_col2))
+        )
+      );
+      GL_CHECK(
+        glVertexAttribIPointer(
+          4,
           1,
           GL_UNSIGNED_BYTE,
           sizeof(SpriteAttributes),
@@ -1008,7 +1058,7 @@ namespace ultra::renderer {
       );
       GL_CHECK(
         glVertexAttribIPointer(
-          2,
+          5,
           1,
           GL_UNSIGNED_SHORT,
           sizeof(SpriteAttributes),
@@ -1017,7 +1067,7 @@ namespace ultra::renderer {
       );
       GL_CHECK(
         glVertexAttribIPointer(
-          3,
+          6,
           2,
           GL_UNSIGNED_BYTE,
           sizeof(SpriteAttributes),
@@ -1026,7 +1076,7 @@ namespace ultra::renderer {
       );
       GL_CHECK(
         glVertexAttribIPointer(
-          4,
+          7,
           2,
           GL_UNSIGNED_BYTE,
           sizeof(SpriteAttributes),
@@ -1035,7 +1085,7 @@ namespace ultra::renderer {
       );
       GL_CHECK(
         glVertexAttribIPointer(
-          5,
+          8,
           2,
           GL_UNSIGNED_BYTE,
           sizeof(SpriteAttributes),
@@ -1044,11 +1094,21 @@ namespace ultra::renderer {
       );
       GL_CHECK(
         glVertexAttribIPointer(
-          6,
+          9,
           2,
           GL_UNSIGNED_BYTE,
           sizeof(SpriteAttributes),
           reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_br))
+        )
+      );
+      GL_CHECK(
+        glVertexAttribPointer(
+          10,
+          1,
+          GL_FLOAT,
+          GL_FALSE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, opacity))
         )
       );
       GL_CHECK(glEnableVertexAttribArray(0));
@@ -1058,6 +1118,10 @@ namespace ultra::renderer {
       GL_CHECK(glEnableVertexAttribArray(4));
       GL_CHECK(glEnableVertexAttribArray(5));
       GL_CHECK(glEnableVertexAttribArray(6));
+      GL_CHECK(glEnableVertexAttribArray(7));
+      GL_CHECK(glEnableVertexAttribArray(8));
+      GL_CHECK(glEnableVertexAttribArray(9));
+      GL_CHECK(glEnableVertexAttribArray(10));
       GL_CHECK(glDrawArrays(GL_POINTS, 0, entities_count));
       GL_CHECK(glBindVertexArray(0));
       unbind_framebuffer();
