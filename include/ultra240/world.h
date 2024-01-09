@@ -147,8 +147,8 @@ namespace ultra {
          * and the entity movement vector is positive. In this manner, all
          * boundaries are one-way, however, this flag disables transient
          * animation tile collision checking when the entity is currently
-         * intersecting the boundary. This prevents zipping unwanted zipping
-         * during entity animations.
+         * intersecting the boundary. This prevents unwanted zipping during
+         * entity animations.
          */
         OneWay = 0x40,
       };

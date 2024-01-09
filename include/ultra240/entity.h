@@ -80,7 +80,7 @@ namespace ultra {
         /** Set animation speed. */
         Builder& speed(float speed);
 
-        /** Return build instance. */
+        /** Return built instance. */
         AnimationControls build() const;
       };
     };
