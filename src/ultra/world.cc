@@ -2,12 +2,13 @@
 #include <unordered_map>
 #include <memory>
 #include <ultra240/world.h>
-#include "ultra.h"
+#include "ultra/ultra.h"
 
 namespace ultra {
 
   World::World(const std::string& name) {
-    std::ifstream stream(ultra::data_dir + "/world/" + name + ".bin");
+    auto path = ultra::path_manager::data_dir + "/world/" + name + ".bin";
+    std::ifstream stream(path);
     // Read number of maps.
     uint16_t map_count;
     stream.read(reinterpret_cast<char*>(&map_count), sizeof(uint16_t));

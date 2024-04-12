@@ -6,14 +6,12 @@
 #include <memory>
 #include <queue>
 #include <set>
-#include <stdexcept>
 #include <unordered_map>
 #include <ultra240/renderer.h>
-#include "image.h"
-#include "renderer.h"
+#include "ultra/ultra.h"
 #include "shader/shader.h"
 
-#define MAX_SPRITES         512
+#define MAX_SPRITES  512
 
 static const char* glEnumName(GLenum _enum) {
 #define GLENUM(_ty) case _ty: return #_ty
@@ -38,16 +36,10 @@ static const char* glEnumName(GLenum _enum) {
     GLenum gl_err = glGetError();                       \
     if (gl_err != 0) {                                  \
       std::string gl_err_str(glEnumName(gl_err));       \
-      throw std::runtime_error(                         \
-        std::string(__FILE__)                           \
-        + ":"                                           \
-        + std::to_string(__LINE__)                      \
-        + " "                                           \
-        + #expr "; GL error 0x"                         \
+      std::string msg = #expr "; GL error "             \
         + std::to_string(gl_err)                        \
-        + ": "                                          \
-        +  gl_err_str                                   \
-      );                                                \
+        + ": " + gl_err_str;                            \
+      throw error(__FILE__, __LINE__, msg);             \
     }                                                   \
   }
 
@@ -147,7 +139,8 @@ namespace ultra::renderer {
       unsigned int shader_source_len
     ) : handle(glCreateShader(type)) {
       if (!handle) {
-        throw std::runtime_error("Shader: could not create " + name);
+        auto msg = "could not create " + name;
+        throw error(__FILE__, __LINE__, msg);
       }
       GL_CHECK(
         glShaderSource(
@@ -165,9 +158,8 @@ namespace ultra::renderer {
         GL_CHECK(glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &log_length));
         GLchar log[log_length];
         GL_CHECK(glGetShaderInfoLog(handle, log_length, nullptr, log));
-        throw std::runtime_error(
-          "Shader: could not compile " + name + ": " + log
-        );
+        auto msg = "could not compile " + name + ": " + log;
+        throw error(__FILE__, __LINE__, msg);
       }
     }
 
@@ -188,7 +180,8 @@ namespace ultra::renderer {
     Program(const std::string& name, const std::vector<const Shader*>& shaders)
       : handle(glCreateProgram()) {
       if (!handle) {
-        throw std::runtime_error("Program: could not create " + name);
+        auto msg = "could not create " + name;
+        throw error(__FILE__, __LINE__, msg);
       }
       for (const auto& shader : shaders) {
         GL_CHECK(glAttachShader(handle, shader->handle));
@@ -201,9 +194,8 @@ namespace ultra::renderer {
         GL_CHECK(glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &log_length));
         GLchar log[log_length];
         GL_CHECK(glGetProgramInfoLog(handle, log_length, nullptr, log));
-        throw std::runtime_error(
-          "Program: could not link " + name + ": " + log
-        );
+        auto msg = "could not link " + name + ": " + log;
+        throw error(__FILE__, __LINE__, msg);
       }
     }
 
@@ -222,7 +214,8 @@ namespace ultra::renderer {
       GL_CHECK(value = glGetUniformLocation(handle, name));
       if (value == -1) {
         std::string sname(name);
-        throw std::runtime_error("Program: cannot find uniform " + sname);
+        auto msg = "cannot find uniform " + sname;
+        throw error(__FILE__, __LINE__, msg);
       }
       return value;
     }
@@ -527,7 +520,8 @@ namespace ultra::renderer {
       GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
       GL_CHECK(glDrawBuffers(1, &draw_buffer));
       if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        throw std::runtime_error("Renderer: could not attach frame buffer");
+        std::string msg = "could not attach frame buffer";
+        throw error(__FILE__, __LINE__, msg);
       }
 
       // Instantiate sprite buffer.

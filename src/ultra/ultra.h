@@ -1,11 +1,7 @@
 #pragma once
 
-#include <string>
-
-namespace ultra {
-
-  extern std::string data_dir;
-
-  extern std::string lib_dir;
-
-}
+#include "ultra/dynamic_library.h"
+#include "ultra/error.h"
+#include "ultra/image.h"
+#include "ultra/path_manager.h"
+#include "ultra/renderer.h"

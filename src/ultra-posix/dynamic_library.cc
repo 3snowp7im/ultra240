@@ -1,8 +1,7 @@
 #include <dlfcn.h>
 #include <stdexcept>
 #include <string>
-#include "ultra.h"
-#include "dynamic_library.h"
+#include "ultra/ultra.h"
 
 namespace ultra::dynamic_library {
 
@@ -16,7 +15,7 @@ namespace ultra::dynamic_library {
       } else {
         fname = "lib" + fname;
       }
-      return ultra::lib_dir + "/" + fname + ".so";
+      return ultra::path_manager::lib_dir + "/" + fname + ".so";
     }
 
     class DynamicLibrary : public ultra::dynamic_library::Impl::SystemImpl {
@@ -32,9 +31,8 @@ namespace ultra::dynamic_library {
         : handle(dlopen(get_lib_path(name).c_str(), RTLD_LAZY)) {
         if (handle == nullptr) {
           std::string dl_error(dlerror());
-          throw std::runtime_error(
-            "DynamicLibrary: could not open library: " + dl_error
-          );
+          auto msg = "could not open library: " + dl_error;
+          throw error(__FILE__, __LINE__, msg);
         }
       }
 

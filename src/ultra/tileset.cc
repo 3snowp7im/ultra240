@@ -1,7 +1,6 @@
 #include <fstream>
 #include <ultra240/tileset.h>
-#include "ultra.h"
-#include "dynamic_library.h"
+#include "ultra/ultra.h"
 
 namespace ultra {
 
@@ -63,7 +62,8 @@ namespace ultra {
   }
 
   Tileset::Tileset(const std::string& name) {
-    std::ifstream file(ultra::data_dir + "/tileset/" + name + ".bin");
+    auto path = ultra::path_manager::data_dir + "/tileset/" + name + ".bin";
+    std::ifstream file(path);
     read(*this, name_map, library, file);
     file.close();
   }

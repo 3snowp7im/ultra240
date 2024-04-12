@@ -1,6 +1,5 @@
 #include <fstream>
-#include "ultra.h"
-#include "image.h"
+#include "ultra/ultra.h"
 
 namespace ultra {
 
@@ -18,7 +17,7 @@ namespace ultra {
 
   Image::Image(const std::string& name) {
     std::string file_name = std::string(name) + ".bmp";
-    std::ifstream file(ultra::data_dir + "/img/" + file_name);
+    std::ifstream file(ultra::path_manager::data_dir + "/img/" + file_name);
     read(*this, file);
     file.close();
   }

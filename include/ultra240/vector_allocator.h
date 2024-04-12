@@ -9,7 +9,7 @@ namespace ultra {
    * Generic vector allocator.
    *
    * A vector allocator is a dynamic allocator with a fixed size backing array.
-   * This is useful as a backend for link-lists data structures because it
+   * This is useful as a backend for link-list data structures because it
    * eliminates dynamic heap allocation while preserving the benefits of a non-
    * contiguous collection.
    */

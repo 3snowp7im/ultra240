@@ -3,6 +3,7 @@
 #include <limits>
 #include <stdexcept>
 #include <ultra240/entity.h>
+#include "ultra/ultra.h"
 
 namespace ultra {
 
@@ -455,7 +456,7 @@ namespace ultra {
           boundaries,
           false
         )) {
-      throw std::runtime_error("Entity: created entity out of bounds");
+      throw error(__FILE__, __LINE__, "created entity out of bounds");
     }
   }
 
@@ -473,7 +474,7 @@ namespace ultra {
       transform(identity),
       opacity(1) {
     if (!animate(collision_box_type, boundaries, animation_controls)) {
-      throw std::runtime_error("Entity: created entity out of bounds");
+      throw error(__FILE__, __LINE__, "created entity out of bounds");
     }
   }
 

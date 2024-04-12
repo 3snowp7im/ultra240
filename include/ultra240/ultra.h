@@ -13,8 +13,13 @@
 
 namespace ultra {
 
-  /** Initialize library with specified path to data path prefix. */
-  void init(const std::string& data_dir);
+  /**
+   * Initialize library with specified name.
+   *
+   * The name should be chosen so that resource files can be found on the
+   * filesystem.
+   */
+  void init(const std::string& name);
 
   /** Free library resources. */
   void quit();
