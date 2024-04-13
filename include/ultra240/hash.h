@@ -13,6 +13,32 @@ constexpr hstring<chars...> operator ""_h() {
 
 namespace ultra {
 
+  template <typename = void>
+  struct Hash;
+
+  /**
+   * Inline function to return CRC32 digest of a string.
+   *
+   * This function is used to calculate a checksum *at compile time*,
+   * effectively turning any string into a unique 32-bit number.
+   *
+   * As an example, the code:
+   *
+   * ```c++
+   * Hash<>::Type checksum = ultra::hash("ultra"_h);
+   * ```
+   *
+   * is equivalent to:
+   *
+   * ```c++
+   * uint32_t checksum = 0xf2a45a2f; // CRC32 checksum of the string "ultra".
+   * ```
+   */
+  template <typename T>
+  inline constexpr uint32_t hash(T str) {
+    return Hash<decltype(str)>::value;
+  }
+
   static constexpr uint32_t crc_table[] = {
     0x00000000u, 0x77073096u, 0xee0e612cu, 0x990951bau,
     0x076dc419u, 0x706af48fu, 0xe963a535u, 0x9e6495a3u,
@@ -92,9 +118,6 @@ namespace ultra {
     return 0xffffffff;
   }
 
-  template <typename = void>
-  struct Hash;
-
   template <>
   struct Hash<> {
     using Type = uint32_t;
@@ -111,11 +134,5 @@ namespace ultra {
   /** A generic map with CRC32 digest keys. */
   template <typename T>
   using HashMap = std::map<Hash<>::Type, T>;
-
-  /** Inline function to return CRC32 digest of a string. */
-  template <typename T>
-  inline constexpr uint32_t hash(T str) {
-    return Hash<decltype(str)>::value;
-  }
 
 }
