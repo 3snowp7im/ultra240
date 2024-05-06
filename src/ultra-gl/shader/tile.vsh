@@ -62,7 +62,7 @@ void main() {
       }
     }
   }
-  // Convert instance ID to tile screen space.
+  // Calculate tile screen space.
   vec2 screen_space = 16 * vec2(
     (uint(gl_InstanceID) % map_size.x),
     ((uint(gl_InstanceID) / map_size.x) % map_size.y)
