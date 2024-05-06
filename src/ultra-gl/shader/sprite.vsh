@@ -1,50 +1,95 @@
 #version 150 core
 
 in uvec2 vertex;
-in uvec2 tile;
-in mat3 transform;
+in uint tile;
+in mat3 model;
 
-uniform uint tileset_indices[48];
-uniform uvec2 tileset_sizes[48];
-uniform uvec2 tile_sizes[48];
+uniform uint tilesetIndices[48];
+uniform uvec2 tilesetSizes[48];
+uniform uvec2 tileSizes[48];
 uniform mat3 view;
-uniform uint layer_index;
-uniform uint sprite_count;
+uniform uint layerIndex;
+uniform uint spriteCount;
 
 out VS_OUT {
-  vec3 texture_coords;
+  vec3 textureCoords;
 } vs_out;
 
-const vec2 render_size = vec2(256, 240);
+vec2 ultra_screenSpaceToClipSpace(
+  vec2 screenSpace
+) {
+  const vec2 renderSize = vec2(256, 240);
+  return vec2(1, -1) * (screenSpace - renderSize / 2) / (renderSize / 2);
+}
 
-void main() {
-  uint tile_index = tile[0];
-  uint texture_index = tile[1];
+vec4 ultra_getSpriteVertexPosition(
+  int instanceID,
+  uvec2 vertex,
+  uint tile,
+  mat3 model,
+  mat3 view,
+  uint layerIndex,
+  uint spriteCount
+) {
+  uint textureIndex = (tile >> 16) & 0xffffu;
   // Get tile size.
-  uvec2 tile_size = tile_sizes[texture_index];
+  uvec2 tileSize = tileSizes[textureIndex];
   // Convert input vertex to sprite vertex.
-  vec2 sprite_vertex = tile_size * vertex;
+  vec2 spriteVertex = tileSize * vertex;
   // Calculate tile screen space.
-  float z = (sprite_count - uint(gl_InstanceID)) / float(1u + sprite_count);
-  vec2 screen_space =
-    (view * transform * vec3(sprite_vertex, 1)).xy
-    - uvec2(0, tile_size.y);
+  float z = (spriteCount - uint(instanceID)) / float(1u + spriteCount);
+  vec2 screenSpace =
+    (view * model * vec3(spriteVertex, 1)).xy
+    - uvec2(0, tileSize.y);
   // Convert screen space to clip space.
-  gl_Position = vec4(
-    vec2(1, -1) * (screen_space - render_size / 2) / (render_size / 2),
-    (15u - layer_index + z) / 16.,
+  return vec4(
+    ultra_screenSpaceToClipSpace(screenSpace),
+    (15u - layerIndex + z) / 16.,
     1.
   );
+}
+
+vec3 ultra_getSpriteTextureCoords(
+  uvec2 vertex,
+  uint tile,
+  uint tilesetIndices[48],
+  uvec2 tilesetSizes[48],
+  uvec2 tileSizes[48]
+) {
+  uint textureIndex = (tile >> 16) & 0xffffu;
+  uint tileIndex = tile & 0xffffu;
+  // Get tile size.
+  uvec2 tileSize = tileSizes[textureIndex];
+  // Convert input vertex to sprite vertex.
+  vec2 spriteVertex = tileSize * vertex;
+  // Get tileset index and size.
+  uint tilesetIndex = tilesetIndices[textureIndex];
+  uvec2 tilesetSize = tilesetSizes[textureIndex];
   // Calculate tileset column count.
-  uint tileset_index = tileset_indices[texture_index];
-  uvec2 tileset_size = tileset_sizes[texture_index];
-  uint tileset_columns = tileset_size.x / tile_size.x;
-  // Convert tile index to texture start position.
-  vs_out.texture_coords = vec3(
-    vec2(
-      (tile_index % tileset_columns) * tile_size.x,
-      tileset_size.y - (tile_index / tileset_columns) * tile_size.y
-    ) + vec2(sprite_vertex.x, tile_size.y - sprite_vertex.y - tile_size.y),
-    tileset_index
+  uint tilesetColumns = tilesetSize.x / tileSize.x;
+  // Calculate texture space.
+  vec2 textureSpace = vec2(
+    (tileIndex % tilesetColumns) * tileSize.x,
+    tilesetSize.y - (tileIndex / tilesetColumns) * tileSize.y
+  ) + vec2(spriteVertex.x, tileSize.y - spriteVertex.y - tileSize.y);
+  return vec3(textureSpace, tilesetIndex);
+}
+
+void main() {
+  gl_Position = ultra_getSpriteVertexPosition(
+    gl_InstanceID,
+    vertex,
+    tile,
+    model,
+    view,
+    layerIndex,
+    spriteCount
+  );
+  vs_out.textureCoords = ultra_getSpriteTextureCoords(
+    vertex,
+    tile,
+    tilesetIndices,
+    tilesetSizes,
+    tileSizes
   );
 }

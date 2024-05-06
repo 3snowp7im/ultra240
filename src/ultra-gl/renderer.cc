@@ -94,7 +94,7 @@ namespace ultra::renderer {
   enum {
     SPRITE_ATTRIB_LOCATION_VERTEX = 0,
     SPRITE_ATTRIB_LOCATION_TILE = 1,
-    SPRITE_ATTRIB_LOCATION_TRANSFORM = 2,
+    SPRITE_ATTRIB_LOCATION_MODEL = 2,
   };
 
   struct Texture {
@@ -141,9 +141,9 @@ namespace ultra::renderer {
   };
 
   struct SpriteAttributes {
-    GLushort tile[2];
+    GLuint tile;
     GLfloat position[2];
-    GLfloat transform[9];
+    GLfloat model[9];
   };
 
   static GLuint quad_vertices[][2] = {
@@ -431,8 +431,8 @@ namespace ultra::renderer {
         "tile"
       );
       sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_TRANSFORM,
-        "transform"
+        SPRITE_ATTRIB_LOCATION_MODEL,
+        "model"
       );
 
       // Link tile shader program.
@@ -450,23 +450,23 @@ namespace ultra::renderer {
       for (int i = 0; i < 16; i++) {
         uniform_locations.tile.tileset_indices[i] =
           tile_program->get_uniform_location(
-            ("tileset_indices[" + std::to_string(i) + "]").c_str()
+            ("tilesetIndices[" + std::to_string(i) + "]").c_str()
           );
         uniform_locations.tile.tileset_sizes[i] = 
           tile_program->get_uniform_location(
-            ("tileset_sizes[" + std::to_string(i) + "]").c_str()
+            ("tilesetSizes[" + std::to_string(i) + "]").c_str()
           );
         uniform_locations.tile.layer_parallax[i] =
           tile_program->get_uniform_location(
-            ("layer_parallax[" + std::to_string(i) + "]").c_str()
+            ("layerParallax[" + std::to_string(i) + "]").c_str()
           );
       }
       uniform_locations.tile.start_layer_index =
-        tile_program->get_uniform_location("start_layer_index");
+        tile_program->get_uniform_location("startLayerIndex");
       uniform_locations.tile.view =
         tile_program->get_uniform_location("view");
       uniform_locations.tile.map_size =
-        tile_program->get_uniform_location("map_size");
+        tile_program->get_uniform_location("mapSize");
       uniform_locations.tile.time =
         tile_program->get_uniform_location("time");
       uniform_locations.tile.animations =
@@ -476,23 +476,23 @@ namespace ultra::renderer {
       for (int i = 0; i < 48; i++) {
         uniform_locations.sprite.tileset_indices[i] =
           sprite_program->get_uniform_location(
-            ("tileset_indices[" + std::to_string(i) + "]").c_str()
+            ("tilesetIndices[" + std::to_string(i) + "]").c_str()
           );
         uniform_locations.sprite.tile_sizes[i] =
           sprite_program->get_uniform_location(
-            ("tile_sizes[" + std::to_string(i) + "]").c_str()
+            ("tileSizes[" + std::to_string(i) + "]").c_str()
           );
         uniform_locations.sprite.tileset_sizes[i] =
           sprite_program->get_uniform_location(
-            ("tileset_sizes[" + std::to_string(i) + "]").c_str()
+            ("tilesetSizes[" + std::to_string(i) + "]").c_str()
           );
       }
       uniform_locations.sprite.view =
         sprite_program->get_uniform_location("view");
       uniform_locations.sprite.layer_index =
-        sprite_program->get_uniform_location("layer_index");
+        sprite_program->get_uniform_location("layerIndex");
       uniform_locations.sprite.sprite_count =
-        sprite_program->get_uniform_location("sprite_count");
+        sprite_program->get_uniform_location("spriteCount");
 
       // Generate array buffers.
       buffers.reset(new Buffers(BUFFER_COUNT));
@@ -993,7 +993,7 @@ namespace ultra::renderer {
           if (sprite_count < MAX_SPRITES) {
             const auto& sprite = *it;
             auto tile_size = sprite.entity->tileset.tile_size;
-            // Create transform matrix.
+            // Create model transformation matrix.
             GLfloat to[9] = {
               1, 0, 0,
               0, 1, 0,
@@ -1014,22 +1014,24 @@ namespace ultra::renderer {
               0, 1, 0,
               sprite.entity->position.x, sprite.entity->position.y, 1,
             };
-            GLfloat transform[9] = {
+            GLfloat model[9] = {
               1, 0, 0,
               0, 1, 0,
               0, 0, 1,
             };
-            mat3_mult(transform, transform, to);
-            mat3_mult(transform, transform, flip);
-            mat3_mult(transform, transform, from);
-            mat3_mult(transform, transform, &sprite.entity->transform[0]);
-            mat3_mult(transform, transform, translate);
+            mat3_mult(model, model, to);
+            mat3_mult(model, model, flip);
+            mat3_mult(model, model, from);
+            mat3_mult(model, model, &sprite.entity->transform[0]);
+            mat3_mult(model, model, translate);
+            uint32_t tile =
+              (sprite_indices[sprite.texture->index] << 16) | sprite.entity->tile_index;
             SpriteAttributes attrs = {
-              .tile = {sprite.entity->tile_index, sprite_indices[sprite.texture->index]},
-              .transform = {
-                transform[0], transform[1], transform[2],
-                transform[3], transform[4], transform[5],
-                transform[6], transform[7], transform[8],
+              .tile = tile,
+              .model = {
+                model[0], model[1], model[2],
+                model[3], model[4], model[5],
+                model[6], model[7], model[8],
               },
             };
             *curr_attrs++ = attrs;
@@ -1133,52 +1135,52 @@ namespace ultra::renderer {
       GL_CHECK(
         glVertexAttribIPointer(
           SPRITE_ATTRIB_LOCATION_TILE,
-          2,
-          GL_UNSIGNED_SHORT,
+          1,
+          GL_UNSIGNED_INT,
           sizeof(SpriteAttributes),
           reinterpret_cast<void*>(offsetof(SpriteAttributes, tile))
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_TRANSFORM + 0,
+          SPRITE_ATTRIB_LOCATION_MODEL + 0,
           3,
           GL_FLOAT,
           GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform) + 0 * sizeof(GLfloat))
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, model) + 0 * sizeof(GLfloat))
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_TRANSFORM + 1,
+          SPRITE_ATTRIB_LOCATION_MODEL + 1,
           3,
           GL_FLOAT,
           GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform) + 3 * sizeof(GLfloat))
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, model) + 3 * sizeof(GLfloat))
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_TRANSFORM + 2,
+          SPRITE_ATTRIB_LOCATION_MODEL + 2,
           3,
           GL_FLOAT,
           GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform) + 6 * sizeof(GLfloat))
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, model) + 6 * sizeof(GLfloat))
         )
       );
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TILE, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 0, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 1, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 2, 1));
+      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_MODEL + 0, 1));
+      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_MODEL + 1, 1));
+      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_MODEL + 2, 1));
       // Draw the sprites.
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_VERTEX));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TILE));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 0));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 1));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 2));
+      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_MODEL + 0));
+      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_MODEL + 1));
+      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_MODEL + 2));
       GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, sprite_count));
       GL_CHECK(glBindVertexArray(0));
       unbind_framebuffer();
