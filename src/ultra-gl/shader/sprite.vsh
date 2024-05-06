@@ -52,7 +52,7 @@ void main() {
     int(tile_size.x) / 2, int(tile_size.y) / 2, 1
   );
   transform = transform * from * flip * to;
-  // Set sprite position.
+  // Calculate tile screen space.
   float z = (sprite_count - uint(gl_InstanceID)) / float(1u + sprite_count);
   vec2 screen_space =
     position
@@ -60,6 +60,7 @@ void main() {
     - map_position * 16
     - camera_position
     - uvec2(0, tile_size.y);
+  // Convert screen space to clip space.
   gl_Position = vec4(
     vec2(1, -1) * (screen_space - render_size / 2) / (render_size / 2),
     (15u - layer_index + z) / 16.,

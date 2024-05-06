@@ -62,11 +62,12 @@ void main() {
       }
     }
   }
-  // Convert vertex ID to tile screen coords.
+  // Convert instance ID to tile screen space.
   vec2 screen_space = 16 * vec2(
     (uint(gl_InstanceID) % map_size.x),
     ((uint(gl_InstanceID) / map_size.x) % map_size.y)
   ) + tile_vertex - camera_position * layer_parallax[layer_index];
+  // Convert screen space to clip space.
   gl_Position = vec4(
     vec2(1, -1) * (screen_space - render_size / 2) / (render_size / 2),
     (15u - layer_index) / 16.,
