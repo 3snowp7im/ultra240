@@ -95,10 +95,8 @@ namespace ultra::renderer {
     SPRITE_ATTRIB_LOCATION_VERTEX = 0,
     SPRITE_ATTRIB_LOCATION_TILE_INDEX = 1,
     SPRITE_ATTRIB_LOCATION_TEXTURE_INDEX = 2,
-    SPRITE_ATTRIB_LOCATION_POSITION = 3,
-    SPRITE_ATTRIB_LOCATION_TRANSFORM = 4,
-    SPRITE_ATTRIB_LOCATION_FLIP = 7,
-    SPRITE_ATTRIB_LOCATION_OPACITY = 8,
+    SPRITE_ATTRIB_LOCATION_TRANSFORM = 3,
+    SPRITE_ATTRIB_LOCATION_OPACITY = 6,
   };
 
   struct Texture {
@@ -149,7 +147,6 @@ namespace ultra::renderer {
     GLubyte texture_index;
     GLfloat position[2];
     GLfloat transform[9];
-    GLuint flip[2];
     GLfloat opacity;
   };
 
@@ -159,6 +156,20 @@ namespace ultra::renderer {
     {0u, 1u},
     {1u, 1u},
   };
+
+  static void mat3_mult(GLfloat r[9], const GLfloat a[9], const GLfloat b[9]) {
+    GLfloat c[9];
+    c[0] = (a[0] * b[0]) + (a[1] * b[3]) + (a[2] * b[6]);
+    c[1] = (a[0] * b[1]) + (a[1] * b[4]) + (a[2] * b[7]);
+    c[2] = (a[0] * b[2]) + (a[1] * b[5]) + (a[2] * b[8]);
+    c[3] = (a[3] * b[0]) + (a[4] * b[3]) + (a[5] * b[6]);
+    c[4] = (a[3] * b[1]) + (a[4] * b[4]) + (a[5] * b[7]);
+    c[5] = (a[3] * b[2]) + (a[4] * b[5]) + (a[5] * b[8]);
+    c[6] = (a[6] * b[0]) + (a[7] * b[3]) + (a[8] * b[6]);
+    c[7] = (a[6] * b[1]) + (a[7] * b[4]) + (a[8] * b[7]);
+    c[8] = (a[6] * b[2]) + (a[7] * b[5]) + (a[8] * b[8]);
+    memcpy(r, c, sizeof(c));
+  }
 
   class Shader {
   public:
@@ -428,16 +439,8 @@ namespace ultra::renderer {
         "texture_index"
       );
       sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_POSITION,
-        "position"
-      );
-      sprite_program->bind_attrib_location(
         SPRITE_ATTRIB_LOCATION_TRANSFORM,
         "transform"
-      );
-      sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_FLIP,
-        "flip"
       );
       sprite_program->bind_attrib_location(
         SPRITE_ATTRIB_LOCATION_OPACITY,
@@ -997,38 +1000,56 @@ namespace ultra::renderer {
       }
       // Populate the sprite attributes data.
       SpriteAttributes* curr_attrs = sprite_data;
-      size_t entities_count = 0;
+      size_t sprite_count = 0;
       for (const auto& handle : entities) {
         auto it = handle->begin;
         for (int i = 0; i < handle->count; i++, it++) {
-          if (entities_count < MAX_SPRITES) {
+          if (sprite_count < MAX_SPRITES) {
             const auto& sprite = *it;
+            auto tile_size = sprite.entity->tileset.tile_size;
+            // Create transform matrix.
+            GLfloat to[9] = {
+              1, 0, 0,
+              0, 1, 0,
+              -tile_size.x / 2.f, -tile_size.y / 2.f, 1,
+            };
+            GLfloat flip[9] = {
+              sprite.entity->attributes.flip_x ? -1.f : 1.f, 0, 0,
+              0, sprite.entity->attributes.flip_y ? -1.f : 1.f, 0,
+              0, 0, 1,
+            };
+            GLfloat from[9] = {
+              1, 0, 0,
+              0, 1, 0,
+              tile_size.x / 2.f, tile_size.y / 2.f, 1,
+            };
+            GLfloat translate[9] = {
+              1, 0, 0,
+              0, 1, 0,
+              sprite.entity->position.x, sprite.entity->position.y, 1,
+            };
+            GLfloat transform[9] = {
+              1, 0, 0,
+              0, 1, 0,
+              0, 0, 1,
+            };
+            mat3_mult(transform, transform, to);
+            mat3_mult(transform, transform, flip);
+            mat3_mult(transform, transform, from);
+            mat3_mult(transform, transform, &sprite.entity->transform[0]);
+            mat3_mult(transform, transform, translate);
             SpriteAttributes attrs = {
               .tile_index = sprite.entity->tile_index,
               .texture_index = sprite_indices[sprite.texture->index],
-              .position = {
-                sprite.entity->position.x,
-                sprite.entity->position.y,
-              },
               .transform = {
-                sprite.entity->transform[0],
-                sprite.entity->transform[1],
-                sprite.entity->transform[2],
-                sprite.entity->transform[3],
-                sprite.entity->transform[4],
-                sprite.entity->transform[5],
-                sprite.entity->transform[6],
-                sprite.entity->transform[7],
-                sprite.entity->transform[8],
-              },
-              .flip = {
-                sprite.entity->attributes.flip_x,
-                sprite.entity->attributes.flip_y,
+                transform[0], transform[1], transform[2],
+                transform[3], transform[4], transform[5],
+                transform[6], transform[7], transform[8],
               },
               .opacity = sprite.entity->opacity,
             };
             *curr_attrs++ = attrs;
-            entities_count++;
+            sprite_count++;
           }
         }
       }
@@ -1090,7 +1111,7 @@ namespace ultra::renderer {
       GL_CHECK(
         glUniform1ui(
           uniform_locations.sprite.sprite_count,
-          entities_count
+          sprite_count
         )
       );
       // Bind the quad vertex array.
@@ -1111,7 +1132,7 @@ namespace ultra::renderer {
         glBufferSubData(
           GL_ARRAY_BUFFER,
           static_cast<GLintptr>(0),
-          static_cast<GLsizeiptr>(entities_count * sizeof(SpriteAttributes)),
+          static_cast<GLsizeiptr>(sprite_count * sizeof(SpriteAttributes)),
           sprite_data
         )
       );
@@ -1131,16 +1152,6 @@ namespace ultra::renderer {
           GL_UNSIGNED_BYTE,
           sizeof(SpriteAttributes),
           reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_index))
-        )
-      );
-      GL_CHECK(
-        glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_POSITION,
-          2,
-          GL_FLOAT,
-          GL_FALSE,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, position))
         )
       );
       GL_CHECK(
@@ -1174,15 +1185,6 @@ namespace ultra::renderer {
         )
       );
       GL_CHECK(
-        glVertexAttribIPointer(
-          SPRITE_ATTRIB_LOCATION_FLIP,
-          2,
-          GL_UNSIGNED_INT,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, flip))
-        )
-      );
-      GL_CHECK(
         glVertexAttribPointer(
           SPRITE_ATTRIB_LOCATION_OPACITY,
           1,
@@ -1194,23 +1196,19 @@ namespace ultra::renderer {
       );
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TILE_INDEX, 1));
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TEXTURE_INDEX, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_POSITION, 1));
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 0, 1));
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 1, 1));
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 2, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_FLIP, 1));
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_OPACITY, 1));
       // Draw the sprites.
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_VERTEX));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TILE_INDEX));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TEXTURE_INDEX));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_POSITION));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 0));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 1));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 2));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_FLIP));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_OPACITY));
-      GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, entities_count));
+      GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, sprite_count));
       GL_CHECK(glBindVertexArray(0));
       unbind_framebuffer();
     }
