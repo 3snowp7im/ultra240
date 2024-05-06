@@ -9,7 +9,12 @@
 #include <unordered_map>
 #include <ultra240/renderer.h>
 #include "ultra/ultra.h"
-#include "shader/shader.h"
+
+namespace ultra::renderer::shader {
+#include "shader/tile.c"
+#include "shader/sprite.c"
+#include "shader/tex.c"
+}
 
 #define MAX_SPRITES  512
 
@@ -347,20 +352,20 @@ namespace ultra::renderer {
       auto tile_vert_shader = std::make_unique<Shader>(
         GL_VERTEX_SHADER,
         "tile vertex shader",
-        shader_tile_vsh,
-        shader_tile_vsh_len
+        shader::shader_tile_vsh,
+        shader::shader_tile_vsh_len
       );
       auto sprite_vert_shader = std::make_unique<Shader>(
         GL_VERTEX_SHADER,
         "sprite vertex shader",
-        shader_sprite_vsh,
-        shader_sprite_vsh_len
+        shader::shader_sprite_vsh,
+        shader::shader_sprite_vsh_len
       );
       auto tex_frag_shader = std::make_unique<Shader>(
         GL_FRAGMENT_SHADER,
         "texture fragment shader",
-        shader_tex_fsh,
-        shader_tex_fsh_len
+        shader::shader_tex_fsh,
+        shader::shader_tex_fsh_len
       );
 
       // Link tile shader program.
