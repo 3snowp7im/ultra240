@@ -13,7 +13,7 @@
 namespace ultra::renderer::shader {
 #include "shader/tile.c"
 #include "shader/sprite.c"
-#include "shader/tex.c"
+#include "shader/frag.c"
 }
 
 #define MAX_SPRITES  512
@@ -361,18 +361,18 @@ namespace ultra::renderer {
         shader::shader_sprite_vsh,
         shader::shader_sprite_vsh_len
       );
-      auto tex_frag_shader = std::make_unique<Shader>(
+      auto frag_shader = std::make_unique<Shader>(
         GL_FRAGMENT_SHADER,
         "texture fragment shader",
-        shader::shader_tex_fsh,
-        shader::shader_tex_fsh_len
+        shader::shader_frag_fsh,
+        shader::shader_frag_fsh_len
       );
 
       // Link tile shader program.
       tile_program.reset(
         new Program("tile program", {
           tile_vert_shader.get(),
-          tex_frag_shader.get(),
+          frag_shader.get(),
         })
       );
 
@@ -380,14 +380,14 @@ namespace ultra::renderer {
       sprite_program.reset(
         new Program("sprite program", {
           sprite_vert_shader.get(),
-          tex_frag_shader.get(),
+          frag_shader.get(),
         })
       );
 
       // Delete shaders.
       tile_vert_shader.reset(nullptr);
       sprite_vert_shader.reset(nullptr);
-      tex_frag_shader.reset(nullptr);
+      frag_shader.reset(nullptr);
 
       // Bind tile attribute locations.
       tile_program->bind_attrib_location(0, "vertex");

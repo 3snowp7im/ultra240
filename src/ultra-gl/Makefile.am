@@ -5,7 +5,7 @@ AM_CXXFLAGS = \
 SHADER_SOURCES = \
 	shader/tile.c \
 	shader/sprite.c \
-	shader/tex.c
+	shader/frag.c
 
 BUILT_SOURCES = $(SHADER_SOURCES)
 
