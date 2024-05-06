@@ -45,17 +45,24 @@ static const char* glEnumName(GLenum _enum) {
 
 namespace ultra::renderer {
 
-  // Array indexes for each data buffer.
+  // Array indices for each data buffer.
   enum {
-    BUFFER_IDX_TILE,
-    BUFFER_IDX_SPRITE,
+    BUFFER_IDX_QUAD_VERTICES,
+    BUFFER_IDX_TILES,
+    BUFFER_IDX_SPRITES,
     BUFFER_COUNT,
+  };
+
+  // Array indices for each vertex array.
+  enum {
+    VERTEX_ARRAY_IDX_QUAD_VERTICES,
+    VERTEX_ARRAY_COUNT,
   };
 
   // Array indices for each texture array.
   enum {
-    TEXTURE_IDX_TILE,
-    TEXTURE_IDX_ANIMATION,
+    TEXTURE_IDX_TILES,
+    TEXTURE_IDX_ANIMATIONS,
     TEXTURE_IDX_RENDER,
     TEXTURE_COUNT,
   };
@@ -116,17 +123,21 @@ namespace ultra::renderer {
   };
 
   struct SpriteAttributes {
-    GLfloat position[2];
-    GLfloat transform_col0[3];
-    GLfloat transform_col1[3];
-    GLfloat transform_col2[3];
-    GLubyte index;
     GLushort tile_index;
-    GLubyte texture_coords_tl[2];
-    GLubyte texture_coords_tr[2];
-    GLubyte texture_coords_bl[2];
-    GLubyte texture_coords_br[2];
+    GLubyte texture_index;
+    GLfloat position[2];
+    GLfloat transform0[3];
+    GLfloat transform1[3];
+    GLfloat transform2[3];
+    GLuint flip[2];
     GLfloat opacity;
+  };
+
+  static GLuint quad_vertices[][2] = {
+    {0u, 0u},
+    {1u, 0u},
+    {0u, 1u},
+    {1u, 1u},
   };
 
   class Shader {
@@ -207,6 +218,10 @@ namespace ultra::renderer {
 
     void use() {
       GL_CHECK(glUseProgram(handle));
+    }
+
+    void bind_attrib_location(GLuint index, const GLchar* name) {
+      GL_CHECK(glBindAttribLocation(handle, index, name));
     }
 
     GLint get_uniform_location(const GLchar* name) {
@@ -332,33 +347,26 @@ namespace ultra::renderer {
       auto tile_vert_shader = std::make_unique<Shader>(
         GL_VERTEX_SHADER,
         "tile vertex shader",
-        shader_tile_vert_glsl,
-        shader_tile_vert_glsl_len
+        shader_tile_vsh,
+        shader_tile_vsh_len
       );
       auto sprite_vert_shader = std::make_unique<Shader>(
         GL_VERTEX_SHADER,
         "sprite vertex shader",
-        shader_sprite_vert_glsl,
-        shader_sprite_vert_glsl_len
-      );
-      auto tex_geom_shader = std::make_unique<Shader>(
-        GL_GEOMETRY_SHADER,
-        "texture geometry shader",
-        shader_tex_geom_glsl,
-        shader_tex_geom_glsl_len
+        shader_sprite_vsh,
+        shader_sprite_vsh_len
       );
       auto tex_frag_shader = std::make_unique<Shader>(
         GL_FRAGMENT_SHADER,
         "texture fragment shader",
-        shader_tex_frag_glsl,
-        shader_tex_frag_glsl_len
+        shader_tex_fsh,
+        shader_tex_fsh_len
       );
 
       // Link tile shader program.
       tile_program.reset(
         new Program("tile program", {
           tile_vert_shader.get(),
-          tex_geom_shader.get(),
           tex_frag_shader.get(),
         })
       );
@@ -367,7 +375,6 @@ namespace ultra::renderer {
       sprite_program.reset(
         new Program("sprite program", {
           sprite_vert_shader.get(),
-          tex_geom_shader.get(),
           tex_frag_shader.get(),
         })
       );
@@ -375,8 +382,11 @@ namespace ultra::renderer {
       // Delete shaders.
       tile_vert_shader.reset(nullptr);
       sprite_vert_shader.reset(nullptr);
-      tex_geom_shader.reset(nullptr);
       tex_frag_shader.reset(nullptr);
+
+      // Bind tile attribute locations.
+      tile_program->bind_attrib_location(0, "vertex");
+      tile_program->bind_attrib_location(1, "tile");
 
       // Get tile uniform locations.
       for (int i = 0; i < 16; i++) {
@@ -393,6 +403,8 @@ namespace ultra::renderer {
             ("layer_parallax[" + std::to_string(i) + "]").c_str()
           );
       }
+      uniform_locations.tile.start_layer_index =
+        tile_program->get_uniform_location("start_layer_index");
       uniform_locations.tile.camera_position =
         tile_program->get_uniform_location("camera_position");
       uniform_locations.tile.map_size =
@@ -401,6 +413,17 @@ namespace ultra::renderer {
         tile_program->get_uniform_location("time");
       uniform_locations.tile.animations =
         tile_program->get_uniform_location("animations");
+
+      // Bind sprite attribute locations.
+      sprite_program->bind_attrib_location(0, "vertex");
+      sprite_program->bind_attrib_location(1, "tile_index");
+      sprite_program->bind_attrib_location(2, "texture_index");
+      sprite_program->bind_attrib_location(3, "position");
+      sprite_program->bind_attrib_location(4, "transform0");
+      sprite_program->bind_attrib_location(5, "transform1");
+      sprite_program->bind_attrib_location(6, "transform2");
+      sprite_program->bind_attrib_location(7, "flip");
+      sprite_program->bind_attrib_location(8, "opacity");
 
       // Get sprite uniform locations.
       for (int i = 0; i < 48; i++) {
@@ -427,10 +450,10 @@ namespace ultra::renderer {
         sprite_program->get_uniform_location("sprite_count");
 
       // Generate array buffers.
-      array_buffers.reset(new Buffers(BUFFER_COUNT));
+      buffers.reset(new Buffers(BUFFER_COUNT));
 
       // Generate vertex array.
-      vertex_arrays.reset(new VertexArrays(BUFFER_COUNT));
+      vertex_arrays.reset(new VertexArrays(VERTEX_ARRAY_COUNT));
 
       // Generate textures.
       textures.reset(new Textures(TEXTURE_COUNT));
@@ -525,7 +548,7 @@ namespace ultra::renderer {
       }
 
       // Instantiate sprite buffer.
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_SPRITE]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_SPRITES]));
       GL_CHECK(
         glBufferData(
           GL_ARRAY_BUFFER,
@@ -535,8 +558,19 @@ namespace ultra::renderer {
         )
       );
 
+      // Instantiate quad vertices.
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTICES]));
+      GL_CHECK(
+        glBufferData(
+          GL_ARRAY_BUFFER,
+          sizeof(quad_vertices),
+          quad_vertices,
+          GL_STATIC_DRAW
+        )
+      );
+
       // Setup the tile texture array.
-      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]));
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILES]));
       GL_CHECK(
         glTexParameteri(
           GL_TEXTURE_2D_ARRAY,
@@ -566,7 +600,7 @@ namespace ultra::renderer {
       GL_CHECK(
         glBindTexture(
           GL_TEXTURE_2D_ARRAY,
-          textures[TEXTURE_IDX_ANIMATION]
+          textures[TEXTURE_IDX_ANIMATIONS]
         )
       );
       GL_CHECK(
@@ -717,7 +751,7 @@ namespace ultra::renderer {
       size_t layer_size = map_area * sizeof(uint16_t);
       size_t layer_count = maps[map_index].layers.size();
       size_t buffer_size = layer_count * layer_size;
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_TILE]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_TILES]));
       GL_CHECK(
         glBufferData(
           GL_ARRAY_BUFFER,
@@ -802,12 +836,12 @@ namespace ultra::renderer {
       // Set the tileset uniforms.
       GL_CHECK(glUniform1i(uniform_locations.tile.animations, 1));
       GL_CHECK(glActiveTexture(GL_TEXTURE0 + 0));
-      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]));
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILES]));
       GL_CHECK(glActiveTexture(GL_TEXTURE0 + 1));
       GL_CHECK(
         glBindTexture(
           GL_TEXTURE_2D_ARRAY,
-          textures[TEXTURE_IDX_ANIMATION]
+          textures[TEXTURE_IDX_ANIMATIONS]
         )
       );
       // Set uniforms linking texture index with tileset index.
@@ -835,6 +869,13 @@ namespace ultra::renderer {
           maps[map_index].layers[i].parallax.y
         );
       }
+      // Set the layer start index uniform.
+      GL_CHECK(
+        glUniform1ui(
+          uniform_locations.tile.start_layer_index,
+          start_layer_idx
+        )
+      );
       // Set the camera position uniform value.
       GL_CHECK(
         glUniform2f(
@@ -853,23 +894,37 @@ namespace ultra::renderer {
       );
       // Set the time uniform value.
       GL_CHECK(glUniform1ui(uniform_locations.tile.time, time));
-      // Draw the tiles
-      size_t map_area = maps[map_index].size.x * maps[map_index].size.y;
-      size_t tile_offset = map_area * start_layer_idx;
-      size_t tile_count = map_area * layer_count;
-      GL_CHECK(glBindVertexArray(vertex_arrays[BUFFER_IDX_TILE]));
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_TILE]));
+      // Bind the quad vertex array.
+      GL_CHECK(glBindVertexArray(vertex_arrays[VERTEX_ARRAY_IDX_QUAD_VERTICES]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTICES]));
       GL_CHECK(
         glVertexAttribIPointer(
           0,
+          2,
+          GL_UNSIGNED_INT,
+          2 * sizeof(GLuint),
+          nullptr
+        )
+      );
+      // Set up the tile instance data.
+      size_t map_area = maps[map_index].size.x * maps[map_index].size.y;
+      size_t tile_offset = map_area * start_layer_idx;
+      GLsizei tile_count = map_area * layer_count;
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_TILES]));
+      GL_CHECK(
+        glVertexAttribIPointer(
+          1,
           1,
           GL_UNSIGNED_SHORT,
           sizeof(GLushort),
-          reinterpret_cast<void*>(0)
+          reinterpret_cast<void*>(tile_offset * sizeof(GLushort))
         )
       );
+      GL_CHECK(glVertexAttribDivisor(1, 1));
+      // Draw the tiles.
       GL_CHECK(glEnableVertexAttribArray(0));
-      GL_CHECK(glDrawArrays(GL_POINTS, tile_offset, tile_count));
+      GL_CHECK(glEnableVertexAttribArray(1));
+      GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, tile_count));
       GL_CHECK(glBindVertexArray(0));
       unbind_framebuffer();
     }
@@ -879,15 +934,59 @@ namespace ultra::renderer {
       size_t layer_index
     ) {
       bind_framebuffer();
+      // Get sprite indices.
+      uint8_t sprite_indices[64];
+      for (auto& pair : sprite_textures) {
+        sprite_indices[pair.first->index] = pair.second;
+      }
+      // Populate the sprite attributes data.
+      SpriteAttributes* curr_attrs = sprite_data;
+      size_t entities_count = 0;
+      for (const auto& handle : entities) {
+        auto it = handle->begin;
+        for (int i = 0; i < handle->count; i++, it++) {
+          if (entities_count < MAX_SPRITES) {
+            const auto& sprite = *it;
+            SpriteAttributes attrs = {
+              .tile_index = sprite.entity->tile_index,
+              .texture_index = sprite_indices[sprite.texture->index],
+              .position = {
+                sprite.entity->position.x,
+                sprite.entity->position.y,
+              },
+              .transform0 = {
+                sprite.entity->transform[0],
+                sprite.entity->transform[1],
+                sprite.entity->transform[2],
+              },
+              .transform1 = {
+                sprite.entity->transform[3],
+                sprite.entity->transform[4],
+                sprite.entity->transform[5],
+              },
+              .transform2 = {
+                sprite.entity->transform[6],
+                sprite.entity->transform[7],
+                sprite.entity->transform[8],
+              },
+              .flip = {
+                sprite.entity->attributes.flip_x,
+                sprite.entity->attributes.flip_y,
+              },
+              .opacity = sprite.entity->opacity,
+            };
+            *curr_attrs++ = attrs;
+            entities_count++;
+          }
+        }
+      }
       // Use the sprite program.
       sprite_program->use();
       // Set the tileset uniform.
       GL_CHECK(glActiveTexture(GL_TEXTURE0));
-      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILE]));
-      // Set uniforms linking texture index with tileset index.
-      uint8_t sprite_indices[64];
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILES]));
+      // Set tileset uniforms.
       for (auto& pair : sprite_textures) {
-        sprite_indices[pair.first->index] = pair.second;
         // Set the tileset indices uniform values.
         GL_CHECK(
           glUniform1ui(
@@ -939,71 +1038,52 @@ namespace ultra::renderer {
       GL_CHECK(
         glUniform1ui(
           uniform_locations.sprite.sprite_count,
-          sprites.size()
+          entities_count
         )
       );
-      // Upload the sprite attributes data.
-      SpriteAttributes* curr_attrs = sprite_data;
-      size_t entities_count = 0;
-      for (const auto& handle : entities) {
-        auto it = handle->begin;
-        for (int i = 0; i < handle->count; i++, it++) {
-          const auto& sprite = *it;
-          SpriteAttributes attrs = {
-            .position = {sprite.entity->position.x, sprite.entity->position.y},
-            .transform_col0 = {
-              sprite.entity->transform[0],
-              sprite.entity->transform[1],
-              sprite.entity->transform[2],
-            },
-            .transform_col1 = {
-              sprite.entity->transform[3],
-              sprite.entity->transform[4],
-              sprite.entity->transform[5],
-            },
-            .transform_col2 = {
-              sprite.entity->transform[6],
-              sprite.entity->transform[7],
-              sprite.entity->transform[8],
-            },
-            .index = sprite_indices[sprite.texture->index],
-            .tile_index = sprite.entity->tile_index,
-            .texture_coords_tl = {0, 0},
-            .texture_coords_tr = {1, 0},
-            .texture_coords_bl = {0, 1},
-            .texture_coords_br = {1, 1},
-            .opacity = sprite.entity->opacity,
-          };
-          if (sprite.entity->attributes.flip_x) {
-            attrs.texture_coords_tl[0] = 1;
-            attrs.texture_coords_tr[0] = 0;
-            attrs.texture_coords_bl[0] = 1;
-            attrs.texture_coords_br[0] = 0;
-          }
-          if (sprite.entity->attributes.flip_y) {
-            attrs.texture_coords_tl[1] = 1;
-            attrs.texture_coords_tr[1] = 1;
-            attrs.texture_coords_bl[1] = 0;
-            attrs.texture_coords_br[1] = 0;
-          }
-          *curr_attrs++ = attrs;
-        }
-        entities_count += handle->count;
-      }
-      GL_CHECK(glBindVertexArray(vertex_arrays[BUFFER_IDX_SPRITE]));
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, array_buffers[BUFFER_IDX_SPRITE]));
+      // Bind the quad vertex array.
+      GL_CHECK(glBindVertexArray(vertex_arrays[VERTEX_ARRAY_IDX_QUAD_VERTICES]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTICES]));
+      GL_CHECK(
+        glVertexAttribIPointer(
+          0,
+          2,
+          GL_UNSIGNED_INT,
+          2 * sizeof(GLuint),
+          nullptr
+        )
+      );
+      // Set up the sprite instance data.
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_SPRITES]));
       GL_CHECK(
         glBufferSubData(
           GL_ARRAY_BUFFER,
           static_cast<GLintptr>(0),
-          static_cast<GLsizeiptr>(sprites.size() * sizeof(SpriteAttributes)),
+          static_cast<GLsizeiptr>(entities_count * sizeof(SpriteAttributes)),
           sprite_data
         )
       );
-      // Draw the sprites.
+      GL_CHECK(
+        glVertexAttribIPointer(
+          1,
+          1,
+          GL_UNSIGNED_SHORT,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, tile_index))
+        )
+      );
+      GL_CHECK(
+        glVertexAttribIPointer(
+          2,
+          1,
+          GL_UNSIGNED_BYTE,
+          sizeof(SpriteAttributes),
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_index))
+        )
+      );
       GL_CHECK(
         glVertexAttribPointer(
-          0,
+          3,
           2,
           GL_FLOAT,
           GL_FALSE,
@@ -1013,91 +1093,46 @@ namespace ultra::renderer {
       );
       GL_CHECK(
         glVertexAttribPointer(
-          1,
-          3,
-          GL_FLOAT,
-          GL_FALSE,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform_col0))
-        )
-      );
-      GL_CHECK(
-        glVertexAttribPointer(
-          2,
-          3,
-          GL_FLOAT,
-          GL_FALSE,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform_col1))
-        )
-      );
-      GL_CHECK(
-        glVertexAttribPointer(
-          3,
-          3,
-          GL_FLOAT,
-          GL_FALSE,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform_col2))
-        )
-      );
-      GL_CHECK(
-        glVertexAttribIPointer(
           4,
-          1,
-          GL_UNSIGNED_BYTE,
+          3,
+          GL_FLOAT,
+          GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, index))
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform0))
         )
       );
       GL_CHECK(
-        glVertexAttribIPointer(
+        glVertexAttribPointer(
           5,
-          1,
-          GL_UNSIGNED_SHORT,
+          3,
+          GL_FLOAT,
+          GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, tile_index))
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform1))
         )
       );
       GL_CHECK(
-        glVertexAttribIPointer(
+        glVertexAttribPointer(
           6,
-          2,
-          GL_UNSIGNED_BYTE,
+          3,
+          GL_FLOAT,
+          GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_tl))
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, transform2))
         )
       );
       GL_CHECK(
         glVertexAttribIPointer(
           7,
           2,
-          GL_UNSIGNED_BYTE,
+          GL_UNSIGNED_INT,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_tr))
-        )
-      );
-      GL_CHECK(
-        glVertexAttribIPointer(
-          8,
-          2,
-          GL_UNSIGNED_BYTE,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_bl))
-        )
-      );
-      GL_CHECK(
-        glVertexAttribIPointer(
-          9,
-          2,
-          GL_UNSIGNED_BYTE,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_coords_br))
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, flip))
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          10,
+          8,
           1,
           GL_FLOAT,
           GL_FALSE,
@@ -1105,6 +1140,15 @@ namespace ultra::renderer {
           reinterpret_cast<void*>(offsetof(SpriteAttributes, opacity))
         )
       );
+      GL_CHECK(glVertexAttribDivisor(1, 1));
+      GL_CHECK(glVertexAttribDivisor(2, 1));
+      GL_CHECK(glVertexAttribDivisor(3, 1));
+      GL_CHECK(glVertexAttribDivisor(4, 1));
+      GL_CHECK(glVertexAttribDivisor(5, 1));
+      GL_CHECK(glVertexAttribDivisor(6, 1));
+      GL_CHECK(glVertexAttribDivisor(7, 1));
+      GL_CHECK(glVertexAttribDivisor(8, 1));
+      // Draw the sprites.
       GL_CHECK(glEnableVertexAttribArray(0));
       GL_CHECK(glEnableVertexAttribArray(1));
       GL_CHECK(glEnableVertexAttribArray(2));
@@ -1114,9 +1158,7 @@ namespace ultra::renderer {
       GL_CHECK(glEnableVertexAttribArray(6));
       GL_CHECK(glEnableVertexAttribArray(7));
       GL_CHECK(glEnableVertexAttribArray(8));
-      GL_CHECK(glEnableVertexAttribArray(9));
-      GL_CHECK(glEnableVertexAttribArray(10));
-      GL_CHECK(glDrawArrays(GL_POINTS, 0, entities_count));
+      GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, entities_count));
       GL_CHECK(glBindVertexArray(0));
       unbind_framebuffer();
     }
@@ -1166,7 +1208,7 @@ namespace ultra::renderer {
         GL_CHECK(
           glBindTexture(
             GL_TEXTURE_2D_ARRAY,
-            textures[TEXTURE_IDX_TILE]
+            textures[TEXTURE_IDX_TILES]
           )
         );
         GL_CHECK(
@@ -1205,7 +1247,7 @@ namespace ultra::renderer {
           GL_CHECK(
             glBindTexture(
               GL_TEXTURE_2D_ARRAY,
-              textures[TEXTURE_IDX_ANIMATION]
+              textures[TEXTURE_IDX_ANIMATIONS]
             )
           );
           GL_CHECK(
@@ -1257,7 +1299,7 @@ namespace ultra::renderer {
 
     HandlesPointer<Renderbuffers> renderbuffers;
 
-    HandlesPointer<Buffers> array_buffers;
+    HandlesPointer<Buffers> buffers;
 
     HandlesPointer<VertexArrays> vertex_arrays;
 
@@ -1297,6 +1339,7 @@ namespace ultra::renderer {
         GLint tileset_indices[16];
         GLint layer_parallax[16];
         GLint tileset_sizes[16];
+        GLint start_layer_index;
         GLint camera_position;
         GLint map_size;
         GLint time;

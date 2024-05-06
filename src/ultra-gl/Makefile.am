@@ -3,10 +3,9 @@ AM_CXXFLAGS = \
 	-I$(top_srcdir)/include
 
 SHADER_SOURCES = \
-	shader/tile_vert.c \
-	shader/sprite_vert.c \
-	shader/tex_geom.c \
-	shader/tex_frag.c
+	shader/tile.c \
+	shader/sprite.c \
+	shader/tex.c
 
 BUILT_SOURCES = $(SHADER_SOURCES)
 
@@ -17,6 +16,6 @@ libultra_gl_la_SOURCES = \
 	renderer.cc \
 	$(SHADER_SOURCES)
 
-SUFFIXES: .glsl
-.glsl.c:
+SUFFIXES: .vsh .fsh
+.vsh.c .fsh.c:
 	xxd -i $^ | sed 's/ [^ ]*shader_\(.*\) / shader_\1 /g' > $@

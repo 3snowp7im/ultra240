@@ -1,8 +1,11 @@
-#version 330 core
-layout (location = 0) in uint tile_value;
+#version 150 core
+
+in uvec2 vertex;
+in uint tile;
 
 uniform uint tileset_indices[16];
 uniform uvec2 tileset_sizes[16];
+uniform uint start_layer_index;
 uniform vec2 layer_parallax[16];
 uniform vec2 camera_position;
 uniform uvec2 map_size;
@@ -10,23 +13,28 @@ uniform uint time;
 uniform usampler2DArray animations;
 
 out VS_OUT {
-  uvec2 size;
-  uvec3 texture_pos;
-  uvec2 texture_coords[4];
-  mat3 transform;
+  vec3 texture_coords;
   float alpha;
-} vertex_out;
+} vs_out;
+
+const vec2 render_size = vec2(256, 240);
 
 void main() {
-  vertex_out.alpha = float(tile_value > 0u);
-  vertex_out.transform = mat3(1.);
+  vs_out.alpha = float(tile > 0u);
+  // Convert input vertex to tile vertex.
+  vec2 tile_vertex = vec2(16u * vertex);
   // Convert tile value to tile index.
-  uint tile_index = (tile_value & 0xfffu) - 1u;
-  // Convert vertex ID to layer index.
-  uint layer_index = uint(gl_VertexID) / (map_size.x * map_size.y);
-  // Calculate tileset index.
-  uint index = tile_value >> 12;
-  uint tileset_index = tileset_indices[index];
+  uint tile_index = (tile & 0xfffu) - 1u;
+  // Convert instance ID to layer index.
+  uint layer_index =
+    start_layer_index
+    + (uint(gl_InstanceID)) / (map_size.x * map_size.y);
+  // Calculate tileset index and size.
+  uint texture_index = tile >> 12;
+  uint tileset_index = tileset_indices[texture_index];
+  uvec2 tileset_size = tileset_sizes[texture_index];
+  // Calculate tileset column count.
+  uint tileset_columns = tileset_size.x / 16u;
   // Check for animation.
   for (int i = 0; i < 256; i++) {
     vec4 header = texelFetch(animations, ivec3(0, i, tileset_index), 0);
@@ -54,26 +62,22 @@ void main() {
       }
     }
   }
-  // Tile size is constant.
-  vertex_out.size = uvec2(16u, 16u);
   // Convert vertex ID to tile screen coords.
+  vec2 screen_space = 16 * vec2(
+    (uint(gl_InstanceID) % map_size.x),
+    ((uint(gl_InstanceID) / map_size.x) % map_size.y)
+  ) + tile_vertex - camera_position * layer_parallax[layer_index];
   gl_Position = vec4(
-    (uint(gl_VertexID) % map_size.x) * 16u,
-    ((uint(gl_VertexID) / map_size.x) % map_size.y) * 16u,
+    vec2(1, -1) * (screen_space - render_size / 2) / (render_size / 2),
     (15u - layer_index) / 16.,
-    1.0
-  ) - vec4(camera_position * layer_parallax[layer_index], 0, 0);
-  // Calculate tileset column count.
-  uvec2 tileset_size = tileset_sizes[index];
-  uint tileset_columns = tileset_size.x / 16u;
+    1.
+  );
   // Convert tile index to texture start position.
-  vertex_out.texture_pos = uvec3(
-    (tile_index % tileset_columns) * 16u,
-    tileset_size.y - (tile_index / tileset_columns) * 16u,
+  vs_out.texture_coords = vec3(
+    vec2(
+      (tile_index % tileset_columns) * 16u,
+      tileset_size.y - (tile_index / tileset_columns) * 16u
+    ) + vec2(tile_vertex.x, 16 - tile_vertex.y - 16),
     tileset_index
   );
-  vertex_out.texture_coords[0] = uvec2(0u, 0u);
-  vertex_out.texture_coords[1] = uvec2(1u, 0u);
-  vertex_out.texture_coords[2] = uvec2(0u, 1u);
-  vertex_out.texture_coords[3] = uvec2(1u, 1u);
 }

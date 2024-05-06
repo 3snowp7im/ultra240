@@ -10,7 +10,7 @@ namespace ultra {
   const static std::array<float, 9> identity = {
     1., 0., 0.,
     0., 1., 0.,
-    0., 0., 0.,
+    0., 0., 1.,
   };
 
   const static float epsilon = 1.f / 256;
