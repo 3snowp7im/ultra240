@@ -20,15 +20,13 @@ out VS_OUT {
 const vec2 render_size = vec2(256, 240);
 
 void main() {
-  vs_out.alpha = float(tile > 0u);
   // Convert input vertex to tile vertex.
   vec2 tile_vertex = vec2(16u * vertex);
   // Convert tile value to tile index.
   uint tile_index = (tile & 0xfffu) - 1u;
   // Convert instance ID to layer index.
   uint layer_index =
-    start_layer_index
-    + (uint(gl_InstanceID)) / (map_size.x * map_size.y);
+    start_layer_index + uint(gl_InstanceID) / (map_size.x * map_size.y);
   // Calculate tileset index and size.
   uint texture_index = tile >> 12;
   uint tileset_index = tileset_indices[texture_index];
@@ -81,4 +79,6 @@ void main() {
     ) + vec2(tile_vertex.x, 16 - tile_vertex.y - 16),
     tileset_index
   );
+  // Tiles with value 0 are not rendered.
+  vs_out.alpha = float(tile > 0u);
 }
