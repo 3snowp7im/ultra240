@@ -52,7 +52,7 @@ namespace ultra::renderer {
 
   // Array indices for each data buffer.
   enum {
-    BUFFER_IDX_QUAD_VERTICES,
+    BUFFER_IDX_QUAD_VERTS,
     BUFFER_IDX_TILES,
     BUFFER_IDX_SPRITES,
     BUFFER_COUNT,
@@ -60,7 +60,7 @@ namespace ultra::renderer {
 
   // Array indices for each vertex array.
   enum {
-    VERTEX_ARRAY_IDX_QUAD_VERTICES,
+    VERTEX_ARRAY_IDX_QUAD_VERTS,
     VERTEX_ARRAY_COUNT,
   };
 
@@ -153,7 +153,11 @@ namespace ultra::renderer {
     {1u, 1u},
   };
 
-  static void mat3_mult(GLfloat r[9], const GLfloat a[9], const GLfloat b[9]) {
+  static void mat3_mult(
+    GLfloat r[9],
+    const GLfloat a[9],
+    const GLfloat b[9]
+  ) {
     GLfloat c[9];
     c[0] = (a[0] * b[0]) + (a[1] * b[3]) + (a[2] * b[6]);
     c[1] = (a[0] * b[1]) + (a[1] * b[4]) + (a[2] * b[7]);
@@ -604,7 +608,7 @@ namespace ultra::renderer {
       );
 
       // Instantiate quad vertices.
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTICES]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTS]));
       GL_CHECK(
         glBufferData(
           GL_ARRAY_BUFFER,
@@ -940,8 +944,8 @@ namespace ultra::renderer {
       // Set the time uniform value.
       GL_CHECK(glUniform1ui(uniform_locations.tile.time, time));
       // Bind the quad vertex array.
-      GL_CHECK(glBindVertexArray(vertex_arrays[VERTEX_ARRAY_IDX_QUAD_VERTICES]));
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTICES]));
+      GL_CHECK(glBindVertexArray(vertex_arrays[VERTEX_ARRAY_IDX_QUAD_VERTS]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTS]));
       GL_CHECK(
         glVertexAttribIPointer(
           TILE_ATTRIB_LOCATION_VERTEX,
@@ -993,7 +997,9 @@ namespace ultra::renderer {
           if (sprite_count < MAX_SPRITES) {
             const auto& sprite = *it;
             auto tile_size = sprite.entity->tileset.tile_size;
-            // Create model transformation matrix.
+            uint32_t tile =
+              (sprite_indices[sprite.texture->index] << 16)
+              | sprite.entity->tile_index;
             GLfloat to[9] = {
               1, 0, 0,
               0, 1, 0,
@@ -1024,8 +1030,6 @@ namespace ultra::renderer {
             mat3_mult(model, model, from);
             mat3_mult(model, model, &sprite.entity->transform[0]);
             mat3_mult(model, model, translate);
-            uint32_t tile =
-              (sprite_indices[sprite.texture->index] << 16) | sprite.entity->tile_index;
             SpriteAttributes attrs = {
               .tile = tile,
               .model = {
@@ -1073,7 +1077,9 @@ namespace ultra::renderer {
       GLfloat map[9] = {
         1, 0, 0,
         0, 1, 0,
-        -16.f * maps[map_index].position.x, -16.f * maps[map_index].position.y, 1,
+        -16.f * maps[map_index].position.x,
+        -16.f * maps[map_index].position.y,
+        1,
       };
       GLfloat camera[9] = {
         1, 0, 0,
@@ -1111,8 +1117,8 @@ namespace ultra::renderer {
         )
       );
       // Bind the quad vertex array.
-      GL_CHECK(glBindVertexArray(vertex_arrays[VERTEX_ARRAY_IDX_QUAD_VERTICES]));
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTICES]));
+      GL_CHECK(glBindVertexArray(vertex_arrays[VERTEX_ARRAY_IDX_QUAD_VERTS]));
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTS]));
       GL_CHECK(
         glVertexAttribIPointer(
           SPRITE_ATTRIB_LOCATION_VERTEX,
@@ -1148,7 +1154,9 @@ namespace ultra::renderer {
           GL_FLOAT,
           GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, model) + 0 * sizeof(GLfloat))
+          reinterpret_cast<void*>(
+            offsetof(SpriteAttributes, model) + 0 * sizeof(GLfloat)
+          )
         )
       );
       GL_CHECK(
@@ -1158,7 +1166,9 @@ namespace ultra::renderer {
           GL_FLOAT,
           GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, model) + 3 * sizeof(GLfloat))
+          reinterpret_cast<void*>(
+            offsetof(SpriteAttributes, model) + 3 * sizeof(GLfloat)
+          )
         )
       );
       GL_CHECK(
@@ -1168,7 +1178,9 @@ namespace ultra::renderer {
           GL_FLOAT,
           GL_FALSE,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, model) + 6 * sizeof(GLfloat))
+          reinterpret_cast<void*>(
+            offsetof(SpriteAttributes, model) + 6 * sizeof(GLfloat)
+          )
         )
       );
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TILE, 1));
