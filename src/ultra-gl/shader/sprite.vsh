@@ -4,9 +4,7 @@ in uvec2 vertex;
 in uint tile_index;
 in uint texture_index;
 in vec2 position;
-in vec3 transform0;
-in vec3 transform1;
-in vec3 transform2;
+in mat3 transform;
 in uvec2 flip;
 in float opacity;
 
@@ -31,11 +29,6 @@ void main() {
   // Convert input vertex to sprite vertex.
   vec2 sprite_vertex = tile_size * vertex;
   // Create transform matrix.
-  mat3 transform = mat3(
-    transform0,
-    transform1,
-    transform2
-  );
   mat3 to = mat3(
     1, 0, 0,
     0, 1, 0,
@@ -51,12 +44,12 @@ void main() {
     0, 1, 0,
     int(tile_size.x) / 2, int(tile_size.y) / 2, 1
   );
-  transform = transform * from * flip * to;
+  mat3 tmat = transform * from * flip * to;
   // Calculate tile screen space.
   float z = (sprite_count - uint(gl_InstanceID)) / float(1u + sprite_count);
   vec2 screen_space =
     position
-    + (transform * vec3(sprite_vertex, 1)).xy
+    + (tmat * vec3(sprite_vertex, 1)).xy
     - map_position * 16
     - camera_position
     - uvec2(0, tile_size.y);
