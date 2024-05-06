@@ -247,9 +247,6 @@ namespace ultra {
      */
     std::array<float, 9> transform;
 
-    /** Opacity used for rendering. */
-    float opacity;
-
     /** The current animation settings. */
     struct {
 

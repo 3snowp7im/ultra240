@@ -447,8 +447,7 @@ namespace ultra {
       attributes(attributes),
       tile_index(0),
       animation({.playing = false}),
-      transform(identity),
-      opacity(1) {
+      transform(identity) {
     if (!set_tile_index(
           *this,
           tile_index,
@@ -471,8 +470,7 @@ namespace ultra {
       position(position),
       attributes(attributes),
       tile_index(0),
-      transform(identity),
-      opacity(1) {
+      transform(identity) {
     if (!animate(collision_box_type, boundaries, animation_controls)) {
       throw error(__FILE__, __LINE__, "created entity out of bounds");
     }

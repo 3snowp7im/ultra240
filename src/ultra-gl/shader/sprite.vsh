@@ -1,10 +1,8 @@
 #version 150 core
 
 in uvec2 vertex;
-in uint tile_index;
-in uint texture_index;
+in uvec2 tile;
 in mat3 transform;
-in float opacity;
 
 uniform uint tileset_indices[48];
 uniform uvec2 tileset_sizes[48];
@@ -15,12 +13,13 @@ uniform uint sprite_count;
 
 out VS_OUT {
   vec3 texture_coords;
-  float alpha;
 } vs_out;
 
 const vec2 render_size = vec2(256, 240);
 
 void main() {
+  uint tile_index = tile[0];
+  uint texture_index = tile[1];
   // Get tile size.
   uvec2 tile_size = tile_sizes[texture_index];
   // Convert input vertex to sprite vertex.
@@ -48,6 +47,4 @@ void main() {
     ) + vec2(sprite_vertex.x, tile_size.y - sprite_vertex.y - tile_size.y),
     tileset_index
   );
-  // Pass opacity through to fragment shader.
-  vs_out.alpha = opacity;
 }

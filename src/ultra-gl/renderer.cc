@@ -93,10 +93,8 @@ namespace ultra::renderer {
   // Sprite program attribute locations.
   enum {
     SPRITE_ATTRIB_LOCATION_VERTEX = 0,
-    SPRITE_ATTRIB_LOCATION_TILE_INDEX = 1,
-    SPRITE_ATTRIB_LOCATION_TEXTURE_INDEX = 2,
-    SPRITE_ATTRIB_LOCATION_TRANSFORM = 3,
-    SPRITE_ATTRIB_LOCATION_OPACITY = 6,
+    SPRITE_ATTRIB_LOCATION_TILE = 1,
+    SPRITE_ATTRIB_LOCATION_TRANSFORM = 2,
   };
 
   struct Texture {
@@ -143,11 +141,9 @@ namespace ultra::renderer {
   };
 
   struct SpriteAttributes {
-    GLushort tile_index;
-    GLubyte texture_index;
+    GLushort tile[2];
     GLfloat position[2];
     GLfloat transform[9];
-    GLfloat opacity;
   };
 
   static GLuint quad_vertices[][2] = {
@@ -431,20 +427,12 @@ namespace ultra::renderer {
         "vertex"
       );
       sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_TILE_INDEX,
-        "tile_index"
-      );
-      sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_TEXTURE_INDEX,
-        "texture_index"
+        SPRITE_ATTRIB_LOCATION_TILE,
+        "tile"
       );
       sprite_program->bind_attrib_location(
         SPRITE_ATTRIB_LOCATION_TRANSFORM,
         "transform"
-      );
-      sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_OPACITY,
-        "opacity"
       );
 
       // Link tile shader program.
@@ -1037,14 +1025,12 @@ namespace ultra::renderer {
             mat3_mult(transform, transform, &sprite.entity->transform[0]);
             mat3_mult(transform, transform, translate);
             SpriteAttributes attrs = {
-              .tile_index = sprite.entity->tile_index,
-              .texture_index = sprite_indices[sprite.texture->index],
+              .tile = {sprite.entity->tile_index, sprite_indices[sprite.texture->index]},
               .transform = {
                 transform[0], transform[1], transform[2],
                 transform[3], transform[4], transform[5],
                 transform[6], transform[7], transform[8],
               },
-              .opacity = sprite.entity->opacity,
             };
             *curr_attrs++ = attrs;
             sprite_count++;
@@ -1146,20 +1132,11 @@ namespace ultra::renderer {
       );
       GL_CHECK(
         glVertexAttribIPointer(
-          SPRITE_ATTRIB_LOCATION_TILE_INDEX,
-          1,
+          SPRITE_ATTRIB_LOCATION_TILE,
+          2,
           GL_UNSIGNED_SHORT,
           sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, tile_index))
-        )
-      );
-      GL_CHECK(
-        glVertexAttribIPointer(
-          SPRITE_ATTRIB_LOCATION_TEXTURE_INDEX,
-          1,
-          GL_UNSIGNED_BYTE,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, texture_index))
+          reinterpret_cast<void*>(offsetof(SpriteAttributes, tile))
         )
       );
       GL_CHECK(
@@ -1192,30 +1169,16 @@ namespace ultra::renderer {
           reinterpret_cast<void*>(offsetof(SpriteAttributes, transform) + 6 * sizeof(GLfloat))
         )
       );
-      GL_CHECK(
-        glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_OPACITY,
-          1,
-          GL_FLOAT,
-          GL_FALSE,
-          sizeof(SpriteAttributes),
-          reinterpret_cast<void*>(offsetof(SpriteAttributes, opacity))
-        )
-      );
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TILE_INDEX, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TEXTURE_INDEX, 1));
+      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TILE, 1));
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 0, 1));
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 1, 1));
       GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TRANSFORM + 2, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_OPACITY, 1));
       // Draw the sprites.
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_VERTEX));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TILE_INDEX));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TEXTURE_INDEX));
+      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TILE));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 0));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 1));
       GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TRANSFORM + 2));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_OPACITY));
       GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, sprite_count));
       GL_CHECK(glBindVertexArray(0));
       unbind_framebuffer();
