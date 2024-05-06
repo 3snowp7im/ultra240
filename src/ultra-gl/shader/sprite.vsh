@@ -9,8 +9,7 @@ in float opacity;
 uniform uint tileset_indices[48];
 uniform uvec2 tileset_sizes[48];
 uniform uvec2 tile_sizes[48];
-uniform vec2 camera_position;
-uniform ivec2 map_position;
+uniform mat3 view;
 uniform uint layer_index;
 uniform uint sprite_count;
 
@@ -29,9 +28,7 @@ void main() {
   // Calculate tile screen space.
   float z = (sprite_count - uint(gl_InstanceID)) / float(1u + sprite_count);
   vec2 screen_space =
-    (transform * vec3(sprite_vertex, 1)).xy
-    - map_position * 16
-    - camera_position
+    (view * transform * vec3(sprite_vertex, 1)).xy
     - uvec2(0, tile_size.y);
   // Convert screen space to clip space.
   gl_Position = vec4(

@@ -475,8 +475,8 @@ namespace ultra::renderer {
       }
       uniform_locations.tile.start_layer_index =
         tile_program->get_uniform_location("start_layer_index");
-      uniform_locations.tile.camera_position =
-        tile_program->get_uniform_location("camera_position");
+      uniform_locations.tile.view =
+        tile_program->get_uniform_location("view");
       uniform_locations.tile.map_size =
         tile_program->get_uniform_location("map_size");
       uniform_locations.tile.time =
@@ -499,10 +499,8 @@ namespace ultra::renderer {
             ("tileset_sizes[" + std::to_string(i) + "]").c_str()
           );
       }
-      uniform_locations.sprite.camera_position =
-        sprite_program->get_uniform_location("camera_position");
-      uniform_locations.sprite.map_position =
-        sprite_program->get_uniform_location("map_position");
+      uniform_locations.sprite.view =
+        sprite_program->get_uniform_location("view");
       uniform_locations.sprite.layer_index =
         sprite_program->get_uniform_location("layer_index");
       uniform_locations.sprite.sprite_count =
@@ -935,12 +933,12 @@ namespace ultra::renderer {
           start_layer_idx
         )
       );
-      // Set the camera position uniform value.
+      // Set the view uniform value.
       GL_CHECK(
         glUniform2f(
-          uniform_locations.tile.camera_position,
-          camera_position.x,
-          camera_position.y
+          uniform_locations.tile.view,
+          -camera_position.x,
+          -camera_position.y
         )
       );
       // Set the map size uniform value.
@@ -1084,20 +1082,30 @@ namespace ultra::renderer {
           )
         );
       }
-      // Set the camera position uniform value.
-      GL_CHECK(
-        glUniform2f(
-          uniform_locations.sprite.camera_position,
-          camera_position.x,
-          camera_position.y
-        )
-      );
+      GLfloat map[9] = {
+        1, 0, 0,
+        0, 1, 0,
+        -16.f * maps[map_index].position.x, -16.f * maps[map_index].position.y, 1,
+      };
+      GLfloat camera[9] = {
+        1, 0, 0,
+        0, 1, 0,
+        -camera_position.x, -camera_position.y, 1,
+      };
+      GLfloat view[9] = {
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1,
+      };
+      mat3_mult(view, view, map);
+      mat3_mult(view, view, camera);
       // Set the map position uniform value.
       GL_CHECK(
-        glUniform2i(
-          uniform_locations.sprite.map_position,
-          maps[map_index].position.x,
-          maps[map_index].position.y
+        glUniformMatrix3fv(
+          uniform_locations.sprite.view,
+          1,
+          GL_FALSE,
+          view
         )
       );
       // Set the layer index uniform value.
@@ -1390,7 +1398,7 @@ namespace ultra::renderer {
         GLint layer_parallax[16];
         GLint tileset_sizes[16];
         GLint start_layer_index;
-        GLint camera_position;
+        GLint view;
         GLint map_size;
         GLint time;
         GLint animations;
@@ -1400,8 +1408,7 @@ namespace ultra::renderer {
         GLint tileset_indices[48];
         GLint tileset_sizes[48];
         GLint tile_sizes[48];
-        GLint camera_position;
-        GLint map_position;
+        GLint view;
         GLint layer_index;
         GLint sprite_count;
       } sprite;
