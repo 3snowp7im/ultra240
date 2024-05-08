@@ -1,6 +1,6 @@
 #version 150 core
 
-in uvec2 vertex;
+in vec3 vertex;
 in uint tile;
 
 uniform uint tilesetIndices[16];
@@ -25,7 +25,7 @@ vec2 ultra_screenSpaceToClipSpace(
 
 vec4 ultra_getTileVertexPosition(
   int instanceID,
-  uvec2 vertex,
+  vec3 vertex,
   uint tile,
   uint tilesetIndices[16],
   uint startLayerIndex,
@@ -37,7 +37,7 @@ vec4 ultra_getTileVertexPosition(
     return vec4(0);
   }
   uint textureIndex = (tile >> 12) & 0xfu;
-  vec2 tileVertex = vec2(16u * vertex);
+  vec2 tileVertex = vec2(16 * vertex.xy);
   uint tilesetIndex = tilesetIndices[textureIndex];
   // Convert instance ID to layer index.
   uint layerIndex = startLayerIndex + uint(instanceID) / (mapSize.x * mapSize.y);
@@ -55,7 +55,7 @@ vec4 ultra_getTileVertexPosition(
 }
 
 vec3 ultra_getTileTextureCoords(
-  uvec2 vertex,
+  vec3 vertex,
   uint tile,
   uint tilesetIndices[16],
   uvec2 tilesetSizes[16],
@@ -67,7 +67,7 @@ vec3 ultra_getTileTextureCoords(
   }
   uint textureIndex = (tile >> 12) & 0xfu;
   uint tileIndex = (tile & 0xfffu) - 1u;
-  vec2 tileVertex = vec2(16u * vertex);
+  vec2 tileVertex = vec2(16 * vertex.xy);
   uint tilesetIndex = tilesetIndices[textureIndex];
   uvec2 tilesetSize = tilesetSizes[textureIndex];
   // Calculate tileset column count.

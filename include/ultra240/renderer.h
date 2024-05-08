@@ -14,8 +14,8 @@ namespace ultra::renderer {
   /** Internal pointer to tileset loaded in graphics hardware. */
   struct TilesetHandle;
 
-  /** Internal pointer to entities loaded in graphics hardware. */
-  struct EntityHandle;
+  /** Internal pointer to sprites loaded in graphics hardware. */
+  struct SpriteHandle;
 
   /** Set the rendering camera position. */
   void set_camera_position(const geometry::Vector<float>& position);
@@ -32,13 +32,13 @@ namespace ultra::renderer {
    * Load a collection of entities and their associated tileset handles
    * to the graphics hardware.
    */
-  const EntityHandle* load_entities(
+  const SpriteHandle* load_entities(
     const std::vector<const Entity*>& entities,
     const std::vector<const TilesetHandle*>& tilesets
   );
 
   /** Unload a collection of entities from the graphics hardware. */
-  void unload_entities(const std::vector<const EntityHandle*>& handles);
+  void unload_entities(const std::vector<const SpriteHandle*>& handles);
 
   /** Load a world map for rendering. */
   const TilesetHandle* load_map(uint16_t index);
@@ -58,9 +58,9 @@ namespace ultra::renderer {
     ssize_t layer_count
   );
 
-  /** Render entities. */
-  void render_entities(
-    const std::vector<const EntityHandle*>& entities,
+  /** Render sprites. */
+  void render_sprites(
+    const std::vector<const SpriteHandle*>& sprites,
     size_t layer_index
   );
 

@@ -187,25 +187,37 @@ namespace ultra::geometry {
   /** Scalar add vector operator. */
   template <typename T>
   Vector<T> operator+(T lhs, const Vector<T>& rhs) {
-    return {lhs + rhs.x, lhs + rhs.y};
+    return {
+      static_cast<T>(lhs + rhs.x),
+      static_cast<T>(lhs + rhs.y),
+    };
   }
 
   /** Scalar subtract vector operator. */
   template <typename T>
   Vector<T> operator-(T lhs, const Vector<T>& rhs) {
-    return {lhs - rhs.x, lhs - rhs.y};
+    return {
+      static_cast<T>(lhs - rhs.x),
+      static_cast<T>(lhs - rhs.y),
+    };
   }
 
   /** Scalar multiply vector operator. */
   template <typename T>
   Vector<T> operator*(T lhs, const Vector<T>& rhs) {
-    return {lhs * rhs.x, lhs * rhs.y};
+    return {
+      static_cast<T>(lhs * rhs.x),
+      static_cast<T>(lhs * rhs.y),
+    };
   }
 
   /** Scalar divide vector operator. */
   template <typename T>
   Vector<T> operator/(T lhs, const Vector<T>& rhs) {
-    return {lhs / rhs.x, lhs / rhs.y};
+    return {
+      static_cast<T>(lhs / rhs.x),
+      static_cast<T>(lhs / rhs.y),
+    };
   }
 
   /** Vector add scalar operator. */
