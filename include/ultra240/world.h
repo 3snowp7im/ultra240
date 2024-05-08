@@ -37,19 +37,13 @@ namespace ultra {
       public:
 
         /** Read a serialized layer from a stream. */
-        Layer(
-          std::istream& stream,
-          const geometry::Vector<uint16_t>& size
-        );
+        Layer(std::istream& stream);
 
         /** Name of this layer. */
         ultra::Hash<>::Type name;
 
         /** The rendered parallax of the layer. */
         geometry::Vector<float> parallax;
-
-        /** The tile IDs comprising the layer. */
-        std::vector<uint16_t> tiles;
       };
 
       /** 
@@ -126,6 +120,9 @@ namespace ultra {
           std::vector<uint16_t> min, max;
         } x, y;
       } sorted_entities;
+
+      /** The tile IDs comprising the map. */
+      std::vector<uint16_t> tiles;
     };
 
     /** 

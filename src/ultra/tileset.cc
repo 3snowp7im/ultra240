@@ -72,7 +72,8 @@ namespace ultra {
     read(*this, name_map, library, stream);
   }
 
-  Tileset::Tile::Tile() {}
+  Tileset::Tile::Tile()
+    : animation_duration(0) {}
 
   void Tileset::Tile::read(std::istream& stream) {
     // Read tile name.
@@ -104,6 +105,7 @@ namespace ultra {
     animation_tiles.reserve(animation_tile_count);
     for (int i = 0; i < animation_tile_count; i++) {
       animation_tiles.emplace_back(stream);
+      animation_duration += animation_tiles.back().duration;
     }
     // Load dynamic library.
     stream.seekg(library_offset, stream.beg);

@@ -3,8 +3,7 @@ AM_CXXFLAGS = \
 	-I$(top_srcdir)/include
 
 SHADER_SOURCES = \
-	shader/tile.c \
-	shader/sprite.c \
+	shader/vert.c \
 	shader/frag.c
 
 BUILT_SOURCES = $(SHADER_SOURCES)

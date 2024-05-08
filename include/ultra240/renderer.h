@@ -40,8 +40,8 @@ namespace ultra::renderer {
   /** Unload a collection of entities from the graphics hardware. */
   void unload_entities(const std::vector<const SpriteHandle*>& handles);
 
-  /** Load a world map for rendering. */
-  const TilesetHandle* load_map(uint16_t index);
+  /** Set the current world map for rendering. */
+  const TilesetHandle* set_map(uint16_t index);
 
   /** Load a world to the graphics hardware. */
   void load_world(const World& world);
@@ -53,7 +53,7 @@ namespace ultra::renderer {
   void clear();
 
   /** Render tile layers. */
-  void render_tile_layers(
+  void render_tiles(
     size_t start_layer_idx,
     ssize_t layer_count
   );

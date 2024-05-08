@@ -81,6 +81,9 @@ namespace ultra {
       /** Collection of animation tiles. */
       std::vector<AnimationTile> animation_tiles;
 
+      /** Duration of total animation. */
+      uint32_t animation_duration;
+
       /** Code library associated with this tile. */
       std::unique_ptr<DynamicLibrary> library;
     };

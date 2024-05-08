@@ -210,17 +210,22 @@ namespace ultra {
       entity.tile_index = (entity.tile_index & 0x3ff) - 1;
     }
     // Read layers.
+    size_t area = size.x * size.y;
+    tiles.resize(layer_count * area);
     layers.reserve(layer_count);
     for (int i = 0; i < layer_count; i++) {
+      // Read layer.
       stream.seekg(layer_offsets[i], stream.beg);
-      layers.emplace_back(stream, size);
+      layers.emplace_back(stream);
+      // Read tiles.
+      stream.read(
+        reinterpret_cast<char*>(&tiles[i * area]),
+        sizeof(uint16_t) * area
+      );
     }
   }
 
-  World::Map::Layer::Layer(
-    std::istream& stream,
-    const geometry::Vector<uint16_t>& size
-  ) {
+  World::Map::Layer::Layer(std::istream& stream) {
     // Read name.
     stream.read(reinterpret_cast<char*>(&name), sizeof(uint32_t));
     // Read parallax.
@@ -231,12 +236,6 @@ namespace ultra {
     stream.read(reinterpret_cast<char*>(&pn), sizeof(uint8_t));
     stream.read(reinterpret_cast<char*>(&pd), sizeof(uint8_t));
     parallax.y = static_cast<float>(pn) / pd;
-    // Read tiles.
-    tiles.resize(size.x * size.y);
-    stream.read(
-      reinterpret_cast<char*>(&tiles[0]),
-      size.x * size.y * sizeof(uint16_t)
-    );
   }
 
   World::Map::Entity::Entity(std::istream& stream) {

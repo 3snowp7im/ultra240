@@ -9,14 +9,14 @@
 #include <unordered_map>
 #include <ultra240/renderer.h>
 #include "ultra/ultra.h"
+#include "mat4.c"
 
 namespace ultra::renderer::shader {
-#include "shader/tile.c"
-#include "shader/sprite.c"
+#include "shader/vert.c"
 #include "shader/frag.c"
 }
 
-#define MAX_SPRITES  512
+#define MAX_ATTRIBUTES  16384
 
 static const char* glEnumName(GLenum _enum) {
 #define GLENUM(_ty) case _ty: return #_ty
@@ -53,8 +53,7 @@ namespace ultra::renderer {
   // Array indices for each data buffer.
   enum {
     BUFFER_IDX_QUAD_VERTS,
-    BUFFER_IDX_TILES,
-    BUFFER_IDX_SPRITES,
+    BUFFER_IDX_VERTEX_ATTRIB,
     BUFFER_COUNT,
   };
 
@@ -67,7 +66,6 @@ namespace ultra::renderer {
   // Array indices for each texture array.
   enum {
     TEXTURE_IDX_TILESETS,
-    TEXTURE_IDX_ANIMATIONS,
     TEXTURE_IDX_RENDER,
     TEXTURE_COUNT,
   };
@@ -84,17 +82,11 @@ namespace ultra::renderer {
     RENDERBUFFER_COUNT,
   };
 
-  // Tile program attribute locations.
+  // Attribute locations.
   enum {
-    TILE_ATTRIB_LOCATION_VERTEX = 0,
-    TILE_ATTRIB_LOCATION_TILE = 1,
-  };
-
-  // Sprite program attribute locations.
-  enum {
-    SPRITE_ATTRIB_LOCATION_VERTEX = 0,
-    SPRITE_ATTRIB_LOCATION_MODEL = 1,
-    SPRITE_ATTRIB_LOCATION_TEXTURE = 5,
+    ATTRIB_LOCATION_VERTEX = 0,
+    ATTRIB_LOCATION_QUAD_TRANSFORM = 1,
+    ATTRIB_LOCATION_TEXTURE_TRANSFORM = 5,
   };
 
   struct Texture {
@@ -114,21 +106,6 @@ namespace ultra::renderer {
     const Texture* texture;
   };
 
-  struct AnimationHeader {
-    uint16_t tile_index;
-    uint16_t tile_count;
-  };
-
-  struct AnimationTile {
-    uint16_t tile_index;
-    uint16_t duration;
-  };
-
-  struct Animation {
-    AnimationHeader header;
-    AnimationTile tiles[255];
-  };
-
   struct TilesetHandle {
     TextureList::iterator begin;
     size_t count;
@@ -140,61 +117,17 @@ namespace ultra::renderer {
     size_t count;
   };
 
-  struct SpriteAttributes {
-    GLfloat model[16];
-    GLfloat texture[16];
+  struct VertexAttributes {
+    mat4 quad_transform;
+    mat4 texture_transform;
   };
 
-  static GLfloat quad_vertices[][3] = {
+  static const GLfloat quad_vertices[][3] = {
     {0, 0, 1},
     {1, 0, 1},
     {0, 1, 1},
     {1, 1, 1},
   };
-
-  static void mat4_mult_mat4(
-    GLfloat r[16],
-    const GLfloat a[16],
-    const GLfloat b[16]
-  ) {
-    GLfloat c[16] = {
-      a[0]  *  b[0]  +  a[1]  *  b[4]  +  a[2]  *  b[8]  +  a[3]  *  b[12],
-      a[0]  *  b[1]  +  a[1]  *  b[5]  +  a[2]  *  b[9]  +  a[3]  *  b[13],
-      a[0]  *  b[2]  +  a[1]  *  b[6]  +  a[2]  *  b[10] +  a[3]  *  b[14],
-      a[0]  *  b[3]  +  a[1]  *  b[7]  +  a[2]  *  b[11] +  a[3]  *  b[15],
-
-      a[4]  *  b[0]  +  a[5]  *  b[4]  +  a[6]  *  b[8]  +  a[7]  *  b[12],
-      a[4]  *  b[1]  +  a[5]  *  b[5]  +  a[6]  *  b[9]  +  a[7]  *  b[13],
-      a[4]  *  b[2]  +  a[5]  *  b[6]  +  a[6]  *  b[10] +  a[7]  *  b[14],
-      a[4]  *  b[3]  +  a[5]  *  b[7]  +  a[6]  *  b[11] +  a[7]  *  b[15],
-
-      a[8]  *  b[0]  +  a[9]  *  b[4]  +  a[10] *  b[8]  +  a[11] *  b[12],
-      a[8]  *  b[1]  +  a[9]  *  b[5]  +  a[10] *  b[9]  +  a[11] *  b[13],
-      a[8]  *  b[2]  +  a[9]  *  b[6]  +  a[10] *  b[10] +  a[11] *  b[14],
-      a[8]  *  b[3]  +  a[9]  *  b[7]  +  a[10] *  b[11] +  a[11] *  b[15],
-
-      a[12] *  b[0]  +  a[13] *  b[4]  +  a[14] *  b[8]  +  a[15] *  b[12],
-      a[12] *  b[1]  +  a[13] *  b[5]  +  a[14] *  b[9]  +  a[15] *  b[13],
-      a[12] *  b[2]  +  a[13] *  b[6]  +  a[14] *  b[10] +  a[15] *  b[14],
-      a[12] *  b[3]  +  a[13] *  b[7]  +  a[14] *  b[11] +  a[15] *  b[15],
-    };
-    memcpy(r, c, sizeof(c));
-  }
-
-  ///
-  static void mat4_mult_vec4(
-    GLfloat r[4],
-    const GLfloat a[16],
-    const GLfloat b[4]
-  ) {
-    GLfloat c[4] = {
-      a[0]  *  b[0]  +  a[4]  *  b[1]  +  a[8]  *  b[2]  +  a[12] *  b[3],
-      a[1]  *  b[0]  +  a[5]  *  b[1]  +  a[9]  *  b[2]  +  a[13] *  b[3],
-      a[2]  *  b[0]  +  a[6]  *  b[1]  +  a[10] *  b[2]  +  a[14] *  b[3],
-      a[3]  *  b[0]  +  a[7]  *  b[1]  +  a[11] *  b[2]  +  a[15] *  b[3],
-    };
-    memcpy(r, c, sizeof(c));
-  }
 
   class Shader {
   public:
@@ -405,17 +338,11 @@ namespace ultra::renderer {
         world_textures_count(0) {
 
       // Compile shaders.
-      auto tile_shader = std::make_unique<Shader>(
+      auto vert_shader = std::make_unique<Shader>(
         GL_VERTEX_SHADER,
-        "tile shader",
-        shader::shader_tile_vsh,
-        shader::shader_tile_vsh_len
-      );
-      auto sprite_shader = std::make_unique<Shader>(
-        GL_VERTEX_SHADER,
-        "sprite shader",
-        shader::shader_sprite_vsh,
-        shader::shader_sprite_vsh_len
+        "vertex shader",
+        shader::shader_vert_vsh,
+        shader::shader_vert_vsh_len
       );
       auto frag_shader = std::make_unique<Shader>(
         GL_FRAGMENT_SHADER,
@@ -424,86 +351,37 @@ namespace ultra::renderer {
         shader::shader_frag_fsh_len
       );
 
-      // Create tile shader program.
-      tile_program.reset(
-        new Program("tile program", {
-          tile_shader.get(),
+      // Create shader program.
+      program.reset(
+        new Program("program", {
+          vert_shader.get(),
           frag_shader.get(),
         })
       );
 
-      // Create sprite shader program.
-      sprite_program.reset(
-        new Program("sprite program", {
-          sprite_shader.get(),
-          frag_shader.get(),
-        })
-      );
-
-      // Bind tile attribute locations.
-      tile_program->bind_attrib_location(
-        TILE_ATTRIB_LOCATION_VERTEX,
+      // Get attribute locations.
+      program->bind_attrib_location(
+        ATTRIB_LOCATION_VERTEX,
         "vertex"
       );
-      tile_program->bind_attrib_location(
-        TILE_ATTRIB_LOCATION_TILE,
-        "tile"
+      program->bind_attrib_location(
+        ATTRIB_LOCATION_QUAD_TRANSFORM,
+        "quad_transform"
       );
-
-      // Get sprite attribute locations.
-      sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_VERTEX,
-        "vertex"
+      program->bind_attrib_location(
+        ATTRIB_LOCATION_TEXTURE_TRANSFORM,
+        "texture_transform"
       );
-      sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_MODEL,
-        "model"
-      );
-      sprite_program->bind_attrib_location(
-        SPRITE_ATTRIB_LOCATION_TEXTURE,
-        "texture"
-      );
-
-      // Link tile shader program.
-      tile_program->link();
 
       // Link sprite shader program.
-      sprite_program->link();
+      program->link();
 
       // Delete shaders.
-      tile_shader.reset(nullptr);
-      sprite_shader.reset(nullptr);
+      vert_shader.reset(nullptr);
       frag_shader.reset(nullptr);
 
-      // Get tile uniform locations.
-      for (int i = 0; i < 16; i++) {
-        uniform_locations.tile.tileset_indices[i] =
-          tile_program->get_uniform_location(
-            ("tilesetIndices[" + std::to_string(i) + "]").c_str()
-          );
-        uniform_locations.tile.tileset_sizes[i] = 
-          tile_program->get_uniform_location(
-            ("tilesetSizes[" + std::to_string(i) + "]").c_str()
-          );
-        uniform_locations.tile.layer_parallax[i] =
-          tile_program->get_uniform_location(
-            ("layerParallax[" + std::to_string(i) + "]").c_str()
-          );
-      }
-      uniform_locations.tile.start_layer_index =
-        tile_program->get_uniform_location("startLayerIndex");
-      uniform_locations.tile.view =
-        tile_program->get_uniform_location("view");
-      uniform_locations.tile.map_size =
-        tile_program->get_uniform_location("mapSize");
-      uniform_locations.tile.time =
-        tile_program->get_uniform_location("time");
-      uniform_locations.tile.animations =
-        tile_program->get_uniform_location("animations");
-
-      // Get sprite uniform locations.
-      uniform_locations.sprite.view =
-        sprite_program->get_uniform_location("view");
+      // Get uniform locations.
+      uniform_locations.tilesets = program->get_uniform_location("tilesets");
 
       // Generate array buffers.
       buffers.reset(new Buffers(BUFFER_COUNT));
@@ -603,17 +481,6 @@ namespace ultra::renderer {
         throw error(__FILE__, __LINE__, msg);
       }
 
-      // Instantiate sprite buffer.
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_SPRITES]));
-      GL_CHECK(
-        glBufferData(
-          GL_ARRAY_BUFFER,
-          sizeof(sprite_data),
-          nullptr,
-          GL_DYNAMIC_DRAW
-        )
-      );
-
       // Instantiate quad vertices.
       GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTS]));
       GL_CHECK(
@@ -622,6 +489,17 @@ namespace ultra::renderer {
           sizeof(quad_vertices),
           quad_vertices,
           GL_STATIC_DRAW
+        )
+      );
+
+      // Instantiate vertex attributes buffer.
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_VERTEX_ATTRIB]));
+      GL_CHECK(
+        glBufferData(
+          GL_ARRAY_BUFFER,
+          sizeof(vertex_attributes),
+          nullptr,
+          GL_DYNAMIC_DRAW
         )
       );
 
@@ -651,29 +529,6 @@ namespace ultra::renderer {
           64
         )
       );
-
-      // Setup the animations texture array.
-      GL_CHECK(
-        glBindTexture(
-          GL_TEXTURE_2D_ARRAY,
-          textures[TEXTURE_IDX_ANIMATIONS]
-        )
-      );
-      GL_CHECK(
-        glTexParameteri(
-          GL_TEXTURE_2D_ARRAY,
-          GL_TEXTURE_MIN_FILTER,
-          GL_NEAREST
-        )
-      );
-      GL_CHECK(
-        glTexParameteri(
-          GL_TEXTURE_2D_ARRAY,
-          GL_TEXTURE_MAG_FILTER,
-          GL_NEAREST
-        )
-      );
-      GL_CHECK(glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RG16UI, 256, 256, 64));
 
       // Push available texture indices onto the sprite texture index stack.
       for (int i = 0; i < 64; i++) {
@@ -800,32 +655,8 @@ namespace ultra::renderer {
       remove_textures(world_textures, world_textures_count);
     }
 
-    const TilesetHandle* load_map(uint16_t index) {
+    const TilesetHandle* set_map(uint16_t index) {
       map_index = index;
-      // Upload tile data.
-      size_t map_area = maps[map_index].size.x * maps[map_index].size.y;
-      size_t layer_size = map_area * sizeof(uint16_t);
-      size_t layer_count = maps[map_index].layers.size();
-      size_t buffer_size = layer_count * layer_size;
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_TILES]));
-      GL_CHECK(
-        glBufferData(
-          GL_ARRAY_BUFFER,
-          buffer_size,
-          nullptr,
-          GL_STATIC_DRAW
-        )
-      );
-      for (int i = 0; i < layer_count; i++) {
-        GL_CHECK(
-          glBufferSubData(
-            GL_ARRAY_BUFFER,
-            static_cast<GLintptr>(i * layer_size),
-            static_cast<GLsizeiptr>(layer_size),
-            &maps[map_index].layers[i].tiles[0]
-          )
-        );
-      }
       return &map_tileset_handles[index];
     }
 
@@ -879,283 +710,66 @@ namespace ultra::renderer {
       unbind_framebuffer();
     }
 
-    void render_tile_layers(
+    void render_tiles(
       size_t start_layer_idx,
       ssize_t layer_count
     ) {
       if (layer_count <= 0) {
         return;
       }
-      bind_framebuffer();
-      // Use the tile program;
-      tile_program->use();
-      // Set the tileset uniforms.
-      GL_CHECK(glUniform1i(uniform_locations.tile.animations, 1));
-      GL_CHECK(glActiveTexture(GL_TEXTURE0 + 0));
-      GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILESETS]));
-      GL_CHECK(glActiveTexture(GL_TEXTURE0 + 1));
-      GL_CHECK(
-        glBindTexture(
-          GL_TEXTURE_2D_ARRAY,
-          textures[TEXTURE_IDX_ANIMATIONS]
-        )
-      );
-      // Set uniforms linking texture index with tileset index.
+      // Get tile count.
+      auto map_size = static_cast<geometry::Vector<size_t>>(maps[map_index].size);
+      auto map_area = map_size.x * map_size.y;
+      auto tile_offset = map_area * start_layer_idx;
+      auto tile_count = map_area * layer_count;
+      // Get texture indices.
+      uint8_t texture_indices[16];
+      geometry::Vector<uint32_t> texture_sizes[16];
       auto texture = map_tile_textures[map_index].begin();
       for (int i = 0;
            texture != map_tile_textures[map_index].end();
            i++, texture++) {
-        // Set the tileset indices uniform values.
-        glUniform1ui(
-          uniform_locations.tile.tileset_indices[i],
-          (*texture)->index
-        );
-        // Set the tileset size uniform values.
-        glUniform2ui(
-          uniform_locations.tile.tileset_sizes[i],
-          (*texture)->size.x,
-          (*texture)->size.y
-        );
+        texture_indices[i] = (*texture)->index;
+        texture_sizes[i] = (*texture)->size;
       }
-      // Set the layer parallax uniform values.
+      // Get layer parallax.
+      geometry::Vector<float> layer_parallax[maps[map_index].layers.size()];
       for (int i = 0; i < maps[map_index].layers.size(); i++) {
-        glUniform2f(
-          uniform_locations.tile.layer_parallax[i],
-          maps[map_index].layers[i].parallax.x,
-          maps[map_index].layers[i].parallax.y
-        );
+        layer_parallax[i] = maps[map_index].layers[i].parallax;
       }
-      // Set the layer start index uniform.
-      GL_CHECK(
-        glUniform1ui(
-          uniform_locations.tile.start_layer_index,
-          start_layer_idx
-        )
-      );
-      // Set the view uniform value.
-      GL_CHECK(
-        glUniform2f(
-          uniform_locations.tile.view,
-          -camera_position.x,
-          -camera_position.y
-        )
-      );
-      // Set the map size uniform value.
-      GL_CHECK(
-        glUniform2ui(
-          uniform_locations.tile.map_size,
-          maps[map_index].size.x,
-          maps[map_index].size.y
-        )
-      );
-      // Set the time uniform value.
-      GL_CHECK(glUniform1ui(uniform_locations.tile.time, time));
-      // Bind the quad vertex array.
-      GL_CHECK(glBindVertexArray(vertex_arrays[VERTEX_ARRAY_IDX_QUAD_VERTS]));
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTS]));
-      GL_CHECK(
-        glVertexAttribPointer(
-          TILE_ATTRIB_LOCATION_VERTEX,
-          3,
-          GL_FLOAT,
-          GL_FALSE,
-          3 * sizeof(GLfloat),
-          nullptr
-        )
-      );
-      // Set up the tile instance data.
-      size_t map_area = maps[map_index].size.x * maps[map_index].size.y;
-      size_t tile_offset = map_area * start_layer_idx;
-      GLsizei tile_count = map_area * layer_count;
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_TILES]));
-      GL_CHECK(
-        glVertexAttribIPointer(
-          TILE_ATTRIB_LOCATION_TILE,
-          1,
-          GL_UNSIGNED_SHORT,
-          sizeof(GLushort),
-          reinterpret_cast<void*>(tile_offset * sizeof(GLushort))
-        )
-      );
-      GL_CHECK(glVertexAttribDivisor(TILE_ATTRIB_LOCATION_TILE, 1));
-      // Draw the tiles.
-      GL_CHECK(glEnableVertexAttribArray(TILE_ATTRIB_LOCATION_VERTEX));
-      GL_CHECK(glEnableVertexAttribArray(TILE_ATTRIB_LOCATION_TILE));
-      GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, tile_count));
-      GL_CHECK(glBindVertexArray(0));
-      unbind_framebuffer();
-    }
-
-    void debug_vec4(GLfloat mat[4]) {
-      printf("%f %f %f %f\n", mat[0], mat[1], mat[2], mat[3]);
-    }
-
-    ///
-    void debug_mat4(GLfloat mat[16]) {
-      for (int i = 0; i < 4; i++) {
-        debug_vec4(&mat[4 * i]);
+      // Populate vertex attributes.
+      VertexAttributes* curr_attrs = vertex_attributes;
+      size_t count = 0;
+      for (size_t i = tile_offset; i < tile_offset + tile_count; i++) {
+        if (count++ >= MAX_ATTRIBUTES) {
+          break;
+        }
+        auto tile = maps[map_index].tiles[i];
+        VertexAttributes attrs = {0};
+        if (tile) {
+          get_tile_quad_transform(attrs.quad_transform, i, layer_parallax);
+          get_tile_texture_transform(
+            attrs.texture_transform,
+            tile,
+            texture_sizes,
+            texture_indices
+          );
+        }
+        *curr_attrs++ = attrs;
       }
-    }
-
-    void clip_space(
-      GLfloat transform[16],
-      const GLfloat view[16]
-    ) {
-      GLfloat translate[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        -128, -120, 0, 1,
-      };
-      GLfloat scale[16] = {
-        1.f / 128, 0, 0, 0,
-        0, -1.f / 120, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-      };
-      GLfloat clip_space[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-      };
-      mat4_mult_mat4(clip_space, clip_space, view);
-      mat4_mult_mat4(clip_space, clip_space, translate);
-      mat4_mult_mat4(clip_space, clip_space, scale);
-      memcpy(transform, clip_space, sizeof(clip_space));
-    }
-
-    void get_sprite_model_transform(
-      GLfloat transform[16],
-      const Entity* entity,
-      size_t layer_index,
-      size_t sprite_index,
-      size_t sprite_count
-    ) {
-      auto tile_size = static_cast<geometry::Vector<float>>(entity->tileset.tile_size);
-      auto sprite_z = (sprite_count - sprite_index) / (1.f + sprite_count);
-      auto layer_z = (15 - layer_index + sprite_z) / 16.f;
-      GLfloat to[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        -.5f, -.5f, 0, 1,
-      };
-      GLfloat flip[16] = {
-        entity->attributes.flip_x ? -1.f : 1.f, 0, 0, 0,
-        0, entity->attributes.flip_y ? -1.f : 1.f, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-      };
-      GLfloat from[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        .5f, .5f, 0, 1,
-      };
-      GLfloat scale[16] = {
-        tile_size.x, 0, 0, 0,
-        0, tile_size.y, 0, 0,
-        0, 0, layer_z, 0,
-        0, 0, 0, 1,
-      };
-      GLfloat entity_transform[16] = {
-        entity->transform[0], entity->transform[1], entity->transform[2], 0,
-        entity->transform[3], entity->transform[4], entity->transform[5], 0,
-        entity->transform[6], entity->transform[7], entity->transform[8], 0,
-        0, 0, 0, 1,
-      };
-      GLfloat translate[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        entity->position.x, entity->position.y - tile_size.y, 0, 1,
-      };
-      GLfloat model[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-      };
-      mat4_mult_mat4(model, model, to);
-      mat4_mult_mat4(model, model, flip);
-      mat4_mult_mat4(model, model, from);
-      mat4_mult_mat4(model, model, scale);
-      mat4_mult_mat4(model, model, entity_transform);
-      mat4_mult_mat4(model, model, translate);
-      memcpy(transform, model, sizeof(model));
-    }
-
-    void get_sprite_texture_transform(
-      GLfloat transform[16],
-      const Entity* entity,
-      geometry::Vector<uint32_t> tileset_sizes[16],
-      uint8_t tileset_index
-    ) {
-      auto tileset_sizeu = tileset_sizes[tileset_index];
-      auto tileset_sizef = static_cast<geometry::Vector<GLfloat>>(tileset_sizeu);
-      auto tile_sizeu = entity->tileset.tile_size;
-      auto tile_sizef = static_cast<geometry::Vector<GLfloat>>(tile_sizeu);
-      auto tile_index = entity->tile_index;
-      auto pos = tile_index * tile_sizeu;
-      auto tex_pos = geometry::Vector<GLfloat>(
-        pos.x % tileset_sizeu.x,
-        tileset_sizef.y - (pos.x / tileset_sizeu.x) * tile_sizef.y - tile_sizef.y
-      );
-      GLfloat to[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, -.5f, 0, 1,
-      };
-      GLfloat flip[16] = {
-        1, 0, 0, 0,
-        0, -1.f, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-      };
-      GLfloat from[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, .5f, 0, 1,
-      };
-      GLfloat scale[16] = {
-        tile_sizef.x, 0, 0, 0,
-        0, tile_sizef.y, 0, 0,
-        0, 0, static_cast<GLfloat>(tileset_index), 0,
-        0, 0, 0, 1,
-      };
-      GLfloat translate[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        tex_pos.x, tex_pos.y, 0, 1,
-      };
-      GLfloat texture[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-      };
-      mat4_mult_mat4(texture, texture, to);
-      mat4_mult_mat4(texture, texture, flip);
-      mat4_mult_mat4(texture, texture, from);
-      mat4_mult_mat4(texture, texture, scale);
-      mat4_mult_mat4(texture, texture, translate);
-      memcpy(transform, texture, sizeof(texture));
+      // Draw arrays.
+      draw_arrays(tile_count);
     }
 
     void render_sprites(
       const std::vector<const SpriteHandle*>& sprites,
       size_t layer_index
     ) {
-      bind_framebuffer();
       // Get sprite and tileset sizes
-      geometry::Vector<uint32_t> tileset_sizes[16];
+      geometry::Vector<uint32_t> texture_sizes[16];
       uint8_t texture_indices[64];
       for (auto& pair : sprite_textures) {
-        tileset_sizes[pair.first->index] = pair.first->size;
+        texture_sizes[pair.first->index] = pair.first->size;
         texture_indices[pair.first->index] = pair.second;
       }
       // Get sprite count.
@@ -1163,77 +777,61 @@ namespace ultra::renderer {
       for (const auto& handle : sprites) {
         sprite_count += handle->count;
       }
-      if (sprite_count > MAX_SPRITES) {
-        sprite_count = MAX_SPRITES;
+      if (sprite_count > MAX_ATTRIBUTES) {
+        sprite_count = MAX_ATTRIBUTES;
       }
       // Populate the sprite attributes data.
-      SpriteAttributes* curr_attrs = sprite_data;
+      VertexAttributes* curr_attrs = vertex_attributes;
       size_t count = 0;
       for (const auto& handle : sprites) {
         auto it = handle->begin;
         for (int i = 0; i < handle->count; i++, it++) {
-          if (count++ < MAX_SPRITES) {
-            const auto& sprite = *it;
-            SpriteAttributes attrs;
-            get_sprite_model_transform(
-              attrs.model,
-              sprite.entity,
-              layer_index,
-              count,
-              sprite_count
-            );
-            get_sprite_texture_transform(
-              attrs.texture,
-              sprite.entity,
-              tileset_sizes,
-              texture_indices[sprite.texture->index]
-            );
-            *curr_attrs++ = attrs;
+          if (count++ >= MAX_ATTRIBUTES) {
+            break;
           }
+          const auto& sprite = *it;
+          VertexAttributes attrs;
+          get_sprite_quad_transform(
+            attrs.quad_transform,
+            sprite.entity,
+            layer_index,
+            count,
+            sprite_count
+          );
+          get_sprite_texture_transform(
+            attrs.texture_transform,
+            sprite.entity,
+            texture_sizes[sprite.texture->index],
+            texture_indices[sprite.texture->index]
+          );
+          *curr_attrs++ = attrs;
         }
       }
-      // Use the sprite program.
-      sprite_program->use();
-      // Set the tileset uniform.
+      // Draw arrays.
+      draw_arrays(sprite_count);
+    }
+
+    geometry::Vector<float> camera_position;
+
+  private:
+
+    void draw_arrays(
+      GLsizei count
+    ) {
+      bind_framebuffer();
+      // Use the shader program.
+      program->use();
+      // Bind the tilesets texture.
       GL_CHECK(glActiveTexture(GL_TEXTURE0));
       GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, textures[TEXTURE_IDX_TILESETS]));
-      // Set the view uniform.
-      auto map_position = maps[map_index].position;
-      GLfloat map[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        -16.f * map_position.x, -16.f * map_position.y, 0, 1,
-      };
-      GLfloat camera[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        -camera_position.x, -camera_position.y, 0, 1,
-      };
-      GLfloat view[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-      };
-      mat4_mult_mat4(view, view, map);
-      mat4_mult_mat4(view, view, camera);
-      clip_space(view, view);
-      GL_CHECK(
-        glUniformMatrix4fv(
-          uniform_locations.sprite.view,
-          1,
-          GL_FALSE,
-          view
-        )
-      );
+      // Set the tilesets uniform.
+      GL_CHECK(glUniform1i(uniform_locations.tilesets, 0));
       // Bind the quad vertex array.
       GL_CHECK(glBindVertexArray(vertex_arrays[VERTEX_ARRAY_IDX_QUAD_VERTS]));
       GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_QUAD_VERTS]));
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_VERTEX,
+          ATTRIB_LOCATION_VERTEX,
           3,
           GL_FLOAT,
           GL_FALSE,
@@ -1241,138 +839,136 @@ namespace ultra::renderer {
           nullptr
         )
       );
-      // Set up the sprite instance data.
-      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_SPRITES]));
+      // Set up the vertex attributes.
+      GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_IDX_VERTEX_ATTRIB]));
       GL_CHECK(
         glBufferSubData(
           GL_ARRAY_BUFFER,
           static_cast<GLintptr>(0),
-          static_cast<GLsizeiptr>(sprite_count * sizeof(SpriteAttributes)),
-          sprite_data
+          static_cast<GLsizeiptr>(count * sizeof(VertexAttributes)),
+          vertex_attributes
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_MODEL + 0,
+          ATTRIB_LOCATION_QUAD_TRANSFORM + 0,
           4,
           GL_FLOAT,
           GL_FALSE,
-          sizeof(SpriteAttributes),
+          sizeof(VertexAttributes),
           reinterpret_cast<void*>(
-            offsetof(SpriteAttributes, model) + 0 * sizeof(GLfloat)
+            offsetof(VertexAttributes, quad_transform) + 0 * sizeof(GLfloat)
           )
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_MODEL + 1,
+          ATTRIB_LOCATION_QUAD_TRANSFORM + 1,
           4,
           GL_FLOAT,
           GL_FALSE,
-          sizeof(SpriteAttributes),
+          sizeof(VertexAttributes),
           reinterpret_cast<void*>(
-            offsetof(SpriteAttributes, model) + 4 * sizeof(GLfloat)
+            offsetof(VertexAttributes, quad_transform) + 4 * sizeof(GLfloat)
           )
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_MODEL + 2,
+          ATTRIB_LOCATION_QUAD_TRANSFORM + 2,
           4,
           GL_FLOAT,
           GL_FALSE,
-          sizeof(SpriteAttributes),
+          sizeof(VertexAttributes),
           reinterpret_cast<void*>(
-            offsetof(SpriteAttributes, model) + 8 * sizeof(GLfloat)
+            offsetof(VertexAttributes, quad_transform) + 8 * sizeof(GLfloat)
           )
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_MODEL + 3,
+          ATTRIB_LOCATION_QUAD_TRANSFORM + 3,
           4,
           GL_FLOAT,
           GL_FALSE,
-          sizeof(SpriteAttributes),
+          sizeof(VertexAttributes),
           reinterpret_cast<void*>(
-            offsetof(SpriteAttributes, model) + 12 * sizeof(GLfloat)
+            offsetof(VertexAttributes, quad_transform) + 12 * sizeof(GLfloat)
           )
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_TEXTURE + 0,
+          ATTRIB_LOCATION_TEXTURE_TRANSFORM + 0,
           4,
           GL_FLOAT,
           GL_FALSE,
-          sizeof(SpriteAttributes),
+          sizeof(VertexAttributes),
           reinterpret_cast<void*>(
-            offsetof(SpriteAttributes, texture) + 0 * sizeof(GLfloat)
+            offsetof(VertexAttributes, texture_transform) + 0 * sizeof(GLfloat)
           )
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_TEXTURE + 1,
+          ATTRIB_LOCATION_TEXTURE_TRANSFORM + 1,
           4,
           GL_FLOAT,
           GL_FALSE,
-          sizeof(SpriteAttributes),
+          sizeof(VertexAttributes),
           reinterpret_cast<void*>(
-            offsetof(SpriteAttributes, texture) + 4 * sizeof(GLfloat)
+            offsetof(VertexAttributes, texture_transform) + 4 * sizeof(GLfloat)
           )
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_TEXTURE + 2,
+          ATTRIB_LOCATION_TEXTURE_TRANSFORM + 2,
           4,
           GL_FLOAT,
           GL_FALSE,
-          sizeof(SpriteAttributes),
+          sizeof(VertexAttributes),
           reinterpret_cast<void*>(
-            offsetof(SpriteAttributes, texture) + 8 * sizeof(GLfloat)
+            offsetof(VertexAttributes, texture_transform) + 8 * sizeof(GLfloat)
           )
         )
       );
       GL_CHECK(
         glVertexAttribPointer(
-          SPRITE_ATTRIB_LOCATION_TEXTURE + 3,
+          ATTRIB_LOCATION_TEXTURE_TRANSFORM + 3,
           4,
           GL_FLOAT,
           GL_FALSE,
-          sizeof(SpriteAttributes),
+          sizeof(VertexAttributes),
           reinterpret_cast<void*>(
-            offsetof(SpriteAttributes, texture) + 12 * sizeof(GLfloat)
+            offsetof(VertexAttributes, texture_transform) + 12 * sizeof(GLfloat)
           )
         )
       );
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_MODEL + 0, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_MODEL + 1, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_MODEL + 2, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_MODEL + 3, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TEXTURE + 0, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TEXTURE + 1, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TEXTURE + 2, 1));
-      GL_CHECK(glVertexAttribDivisor(SPRITE_ATTRIB_LOCATION_TEXTURE + 3, 1));
-      // Draw the sprites.
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_VERTEX));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_MODEL + 0));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_MODEL + 1));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_MODEL + 2));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_MODEL + 3));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TEXTURE + 0));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TEXTURE + 1));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TEXTURE + 2));
-      GL_CHECK(glEnableVertexAttribArray(SPRITE_ATTRIB_LOCATION_TEXTURE + 3));
-      GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, sprite_count));
+      // Set attribute divisors for instancing.
+      GL_CHECK(glVertexAttribDivisor(ATTRIB_LOCATION_QUAD_TRANSFORM + 0, 1));
+      GL_CHECK(glVertexAttribDivisor(ATTRIB_LOCATION_QUAD_TRANSFORM + 1, 1));
+      GL_CHECK(glVertexAttribDivisor(ATTRIB_LOCATION_QUAD_TRANSFORM + 2, 1));
+      GL_CHECK(glVertexAttribDivisor(ATTRIB_LOCATION_QUAD_TRANSFORM + 3, 1));
+      GL_CHECK(glVertexAttribDivisor(ATTRIB_LOCATION_TEXTURE_TRANSFORM + 0, 1));
+      GL_CHECK(glVertexAttribDivisor(ATTRIB_LOCATION_TEXTURE_TRANSFORM + 1, 1));
+      GL_CHECK(glVertexAttribDivisor(ATTRIB_LOCATION_TEXTURE_TRANSFORM + 2, 1));
+      GL_CHECK(glVertexAttribDivisor(ATTRIB_LOCATION_TEXTURE_TRANSFORM + 3, 1));
+      // Enable vertex attributes.
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_VERTEX));
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_QUAD_TRANSFORM + 0));
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_QUAD_TRANSFORM + 1));
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_QUAD_TRANSFORM + 2));
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_QUAD_TRANSFORM + 3));
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_TEXTURE_TRANSFORM + 0));
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_TEXTURE_TRANSFORM + 1));
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_TEXTURE_TRANSFORM + 2));
+      GL_CHECK(glEnableVertexAttribArray(ATTRIB_LOCATION_TEXTURE_TRANSFORM + 3));
+      // Draw arrays.
+      GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, count));
       GL_CHECK(glBindVertexArray(0));
       unbind_framebuffer();
     }
-
-    geometry::Vector<float> camera_position;
-
-  private:
 
     void bind_framebuffer() {
       // Enable depth test
@@ -1390,6 +986,184 @@ namespace ultra::renderer {
           framebuffers[FRAMEBUFFER_IDX_RENDER]
         )
       );
+    }
+
+    void get_tile_quad_transform(
+      mat4 transform,
+      size_t index,
+      const geometry::Vector<GLfloat>* layer_parallax
+    ) {
+      auto map_size = static_cast<geometry::Vector<size_t>>(maps[map_index].size);
+      auto map_area = map_size.x * map_size.y;
+      uint32_t layer_index = index / map_area;
+      auto layer_start = map_area * layer_index;
+      auto layer_offset = index - layer_start;
+      GLfloat layer_z = (15 - layer_index) / 16.f;
+      mat4 scale, translate, view, quad;
+      mat4_scale(scale, 16, 16, layer_z);
+      mat4_translate(
+        translate,
+        16.f * (layer_offset % map_size.x),
+        16.f * (layer_offset / map_size.x),
+        0
+      );
+      mat4_translate(
+        view,
+        -camera_position.x * layer_parallax[layer_index].x,
+        -camera_position.y * layer_parallax[layer_index].y,
+        0
+      );
+      mat4_identity(quad);
+      mat4_mult_mat4(quad, quad, scale);
+      mat4_mult_mat4(quad, quad, translate);
+      mat4_mult_mat4(quad, quad, view);
+      clip(quad, quad);
+      memcpy(transform, quad, sizeof(quad));
+    }
+
+    void get_tile_texture_transform(
+      mat4 transform,
+      uint16_t tile,
+      const geometry::Vector<uint32_t> texture_sizes[16],
+      uint8_t texture_indices[16]
+    ) {
+      auto tileset_index = (tile >> 12) & 0xf;
+      auto tile_index = (tile & 0xfffu) - 1;
+      const auto& tileset = maps[map_index].map_tilesets[tileset_index];
+      const auto& tile_data = tileset->tiles[tile_index];
+      if (tile_data.animation_tiles.size()) {
+        auto rem = time % tile_data.animation_duration;
+        uint32_t duration = 0;
+        for (const auto& animation_tile : tile_data.animation_tiles) {
+          duration += animation_tile.duration;
+          if (rem < duration) {
+            tile_index = animation_tile.tile_index;
+            break;
+          }
+        }
+      }
+      auto texture_size = texture_sizes[tileset_index];
+      auto pos = 16 * tile_index;
+      geometry::Vector<uint16_t> tex_pos(
+        pos % texture_size.x,
+        (pos / texture_size.x) * 16
+      );
+      get_texture_transform(
+        transform,
+        tex_pos,
+        geometry::Vector<uint32_t>(16, 16),
+        texture_size,
+        texture_indices[tileset_index]
+      );
+    }
+
+    void get_sprite_quad_transform(
+      mat4 transform,
+      const Entity* entity,
+      size_t layer_index,
+      size_t sprite_index,
+      size_t sprite_count
+    ) {
+      auto tile_size = entity->tileset.tile_size;
+      auto sprite_z = (1 + sprite_count - sprite_index) / (1.f + sprite_count);
+      auto layer_z = (15 - layer_index + sprite_z) / 16.f;
+      auto map_position = maps[map_index].position;
+      mat4 to, flip, from, scale, entity_transform, translate, view, quad;
+      mat4_translate(to, -.5f, -.5f, 0);
+      mat4_scale(
+        flip,
+        entity->attributes.flip_x ? -1 : 1,
+        entity->attributes.flip_y ? -1 : 1,
+        1
+      );
+      mat4_translate(from, .5f, .5f, 0);
+      mat4_scale(scale, tile_size.x, tile_size.y, layer_z);
+      mat4_from_mat3(entity_transform, &entity->transform[0]);
+      mat4_translate(
+        translate,
+        entity->position.x,
+        entity->position.y - tile_size.y,
+        0
+      );
+      mat4_translate(
+        view,
+        -16.f * map_position.x - camera_position.x,
+        -16.f * map_position.y - camera_position.y,
+        0
+      );
+      mat4_identity(quad);
+      mat4_mult_mat4(quad, quad, to);
+      mat4_mult_mat4(quad, quad, flip);
+      mat4_mult_mat4(quad, quad, from);
+      mat4_mult_mat4(quad, quad, scale);
+      mat4_mult_mat4(quad, quad, entity_transform);
+      mat4_mult_mat4(quad, quad, translate);
+      mat4_mult_mat4(quad, quad, view);
+      clip(quad, quad);
+      memcpy(transform, quad, sizeof(quad));
+    }
+
+    void get_sprite_texture_transform(
+      mat4 transform,
+      const Entity* entity,
+      const geometry::Vector<uint32_t>& texture_size,
+      uint8_t texture_index
+    ) {
+      auto tile_size = entity->tileset.tile_size;
+      auto tile_index = entity->tile_index;
+      auto pos = tile_index * tile_size;
+      auto position = geometry::Vector<uint16_t>(
+        pos.x % texture_size.x,
+        (pos.x / texture_size.x) * tile_size.y
+      );
+      get_texture_transform(
+        transform,
+        position,
+        tile_size,
+        texture_size,
+        texture_index
+      );
+    }
+
+    void get_texture_transform(
+      mat4 transform,
+      const geometry::Vector<uint16_t>& position,
+      const geometry::Vector<uint16_t>& tile_size,
+      const geometry::Vector<uint32_t>& tileset_size,
+      uint8_t texture_index
+    ) {
+      mat4 to, flip, from, scale, translate, texture;
+      mat4_translate(to, 0, -.5f, 0);
+      mat4_scale(flip, 1, -1, 1);
+      mat4_translate(from, 0, .5f, 0);
+      mat4_scale(scale, tile_size.x, tile_size.y, texture_index);
+      mat4_translate(
+        translate,
+        position.x,
+        tileset_size.y - position.y - tile_size.y,
+        0
+      );
+      mat4_identity(texture);
+      mat4_mult_mat4(texture, texture, to);
+      mat4_mult_mat4(texture, texture, flip);
+      mat4_mult_mat4(texture, texture, from);
+      mat4_mult_mat4(texture, texture, scale);
+      mat4_mult_mat4(texture, texture, translate);
+      memcpy(transform, texture, sizeof(texture));
+    }
+
+    void clip(
+      mat4 transform,
+      const mat4 view
+    ) {
+      mat4 translate, scale, clip;
+      mat4_translate(translate, -128, -120, 0);
+      mat4_scale(scale, 1.f / 128, -1.f / 120, 1);
+      mat4_identity(clip);
+      mat4_mult_mat4(clip, clip, view);
+      mat4_mult_mat4(clip, clip, translate);
+      mat4_mult_mat4(clip, clip, scale);
+      memcpy(transform, clip, sizeof(clip));
     }
 
     void unbind_framebuffer() {
@@ -1433,46 +1207,6 @@ namespace ultra::renderer {
             &image.data[0]
           )
         );
-        if (type == Texture::Type::Tile) {
-          Animation animations[256];
-          memset(animations, 0, sizeof(animations));
-          Animation* animation = animations;
-          for (int j = 0; j < tilesets[i]->tiles.size(); j++) {
-            const auto& tile = tilesets[i]->tiles[j];
-            if (tile.animation_tiles.size()) {
-              animation->header.tile_index = j;
-              animation->header.tile_count = tile.animation_tiles.size();
-              AnimationTile* animation_tile = animation->tiles;
-              for (int k = 0; k < tile.animation_tiles.size(); k++) {
-                animation_tile->tile_index = tile.animation_tiles[k].tile_index;
-                animation_tile->duration = tile.animation_tiles[k].duration;
-                animation_tile++;
-              }
-              animation++;
-            }
-          }
-          GL_CHECK(
-            glBindTexture(
-              GL_TEXTURE_2D_ARRAY,
-              textures[TEXTURE_IDX_ANIMATIONS]
-            )
-          );
-          GL_CHECK(
-            glTexSubImage3D(
-              GL_TEXTURE_2D_ARRAY,
-              0,
-              0,
-              0,
-              texture->index,
-              256,
-              256,
-              1,
-              GL_RG_INTEGER,
-              GL_UNSIGNED_SHORT,
-              animations
-            )
-          );
-        }
         sprite_textures.insert({&*texture, sprite_indices.front()});
         sprite_indices.pop();
         texture++;
@@ -1498,9 +1232,7 @@ namespace ultra::renderer {
       }
     }
 
-    std::unique_ptr<Program> tile_program;
-
-    std::unique_ptr<Program> sprite_program;
+    std::unique_ptr<Program> program;
 
     HandlesPointer<Framebuffers> framebuffers;
 
@@ -1541,25 +1273,11 @@ namespace ultra::renderer {
     size_t world_textures_count;
 
     struct {
-
-      struct {
-        GLint tileset_indices[16];
-        GLint layer_parallax[16];
-        GLint tileset_sizes[16];
-        GLint start_layer_index;
-        GLint view;
-        GLint map_size;
-        GLint time;
-        GLint animations;
-      } tile;
-
-      struct {
-        GLint view;
-      } sprite;
-
+      GLint view;
+      GLint tilesets;
     } uniform_locations;
 
-    SpriteAttributes sprite_data[MAX_SPRITES];
+    VertexAttributes vertex_attributes[MAX_ATTRIBUTES];
 
     const World::Map* maps;
 
@@ -1606,8 +1324,8 @@ namespace ultra::renderer {
     renderer->unload_entities(handles);
   }
 
-  const TilesetHandle* load_map(uint16_t index) {
-    return renderer->load_map(index);
+  const TilesetHandle* set_map(uint16_t index) {
+    return renderer->set_map(index);
   }
 
   void load_world(const World& world) {
@@ -1622,8 +1340,8 @@ namespace ultra::renderer {
     renderer->clear();
   }
 
-  void render_tile_layers(size_t start_layer_idx, ssize_t layer_count) {
-    renderer->render_tile_layers(start_layer_idx, layer_count);
+  void render_tiles(size_t start_layer_idx, ssize_t layer_count) {
+    renderer->render_tiles(start_layer_idx, layer_count);
   }
 
   void render_sprites(
