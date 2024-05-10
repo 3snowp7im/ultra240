@@ -15,6 +15,6 @@ libultra_gl_la_SOURCES = \
 	renderer.cc \
 	$(SHADER_SOURCES)
 
-SUFFIXES: .vsh .fsh
-.vsh.c .fsh.c:
+SUFFIXES: .vsc .fsc
+.vsc.c .fsc.c:
 	xxd -i $^ | sed 's/ [^ ]*shader_\(.*\) / shader_\1 /g' > $@

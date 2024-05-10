@@ -8,17 +8,18 @@
 
 namespace ultra::renderer {
 
-  /** Get the handle to the texture the renderer draws into. */
-  uintptr_t get_render_texture();
+  inline constexpr uint16_t texture_width = 2048;
+  inline constexpr uint16_t texture_height = 2048;
+  inline constexpr uint16_t texture_count = 64;
+
+  /** A 4x4 transformation matrix in column major order. */
+  using Transform = float[16];
 
   /** Internal pointer to tileset loaded in graphics hardware. */
   struct TilesetHandle;
 
   /** Internal pointer to sprites loaded in graphics hardware. */
   struct SpriteHandle;
-
-  /** Set the rendering camera position. */
-  void set_camera_position(const geometry::Vector<float>& position);
 
   /** Load a collection of tilesets to the graphics hardware. */
   const TilesetHandle* load_tilesets(
@@ -49,17 +50,36 @@ namespace ultra::renderer {
   /** Unload the world from the hraphics hardware. */
   void unload_world();
 
-  /** Clear the render texture. */
-  void clear();
+  /** Get the handle to the tilesets texture in hardware. */
+  uintptr_t get_texture();
 
-  /** Render tile layers. */
-  void render_tiles(
+  /** Get the number of map tiles. */
+  size_t get_tile_count(
     size_t start_layer_idx,
-    ssize_t layer_count
+    ssize_t layer_count = -1
   );
 
-  /** Render sprites. */
-  void render_sprites(
+  /** Get matrices for map tile layers quad transforms. */
+  size_t get_tile_transforms(
+    Transform quad_transforms[],
+    Transform tex_transforms[],
+    size_t transforms_count,
+    const geometry::Vector<float>& camera_position,
+    size_t start_layer_idx,
+    ssize_t layer_count = -1
+  );
+
+  /** Get the number of sprites. */
+  size_t get_sprite_count(
+    const std::vector<const SpriteHandle*>& sprites
+  );
+
+  /** Get matrices for the sprite quad transforms. */
+  size_t get_sprite_transforms(
+    Transform quad_transforms[],
+    Transform tex_transforms[],
+    size_t transforms_count,
+    const geometry::Vector<float>& camera_position,
     const std::vector<const SpriteHandle*>& sprites,
     size_t layer_index
   );
