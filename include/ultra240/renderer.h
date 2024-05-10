@@ -53,6 +53,11 @@ namespace ultra::renderer {
   /** Get the handle to the tilesets texture in hardware. */
   uintptr_t get_texture();
 
+  /** Get the projection transform matrix. */
+  void get_projection_transform(
+    Transform proj
+  );
+
   /** Get the number of map tiles. */
   size_t get_tile_count(
     size_t start_layer_idx,

@@ -333,6 +333,18 @@ namespace ultra::renderer {
       return textures[TEXTURE_IDX_TILESETS];
     }
 
+    void get_projection_transform(
+      Transform proj
+    ) {
+      mat4 translate, scale, transform;
+      mat4_translate(translate, -256 / 2, -240 / 2, 0);
+      mat4_scale(scale, 2.f / 256, -2.f / 240, 1);
+      mat4_identity(transform);
+      mat4_mult_mat4(transform, transform, translate);
+      mat4_mult_mat4(transform, transform, scale);
+      memcpy(proj, transform, sizeof(transform));
+    }
+
     size_t get_tile_count(
       size_t start_layer_idx,
       ssize_t layer_count
@@ -495,7 +507,6 @@ namespace ultra::renderer {
       mat4_mult_mat4(quad, quad, scale);
       mat4_mult_mat4(quad, quad, translate);
       mat4_mult_mat4(quad, quad, view);
-      clip(quad, quad);
       memcpy(transform, quad, sizeof(quad));
     }
 
@@ -567,7 +578,6 @@ namespace ultra::renderer {
       mat4_mult_mat4(quad, quad, entity_transform);
       mat4_mult_mat4(quad, quad, translate);
       mat4_mult_mat4(quad, quad, view);
-      clip(quad, quad);
       memcpy(transform, quad, sizeof(quad));
     }
 
@@ -615,7 +625,7 @@ namespace ultra::renderer {
       const geometry::Vector<uint32_t>& tileset_size,
       uint8_t texture_index
     ) {
-      mat4 to, flip, from, scale, translate, clip, texture;
+      mat4 to, flip, from, scale, translate, range, texture;
       mat4_translate(to, 0, -.5f, 0);
       mat4_scale(flip, 1, -1, 1);
       mat4_translate(from, 0, .5f, 0);
@@ -626,29 +636,15 @@ namespace ultra::renderer {
         tileset_size.y - position.y - tile_size.y,
         0
       );
-      mat4_scale(clip, 1.f / texture_width, 1.f / texture_height, 1);
+      mat4_scale(range, 1.f / texture_width, 1.f / texture_height, 1);
       mat4_identity(texture);
       mat4_mult_mat4(texture, texture, to);
       mat4_mult_mat4(texture, texture, flip);
       mat4_mult_mat4(texture, texture, from);
       mat4_mult_mat4(texture, texture, scale);
       mat4_mult_mat4(texture, texture, translate);
-      mat4_mult_mat4(texture, texture, clip);
+      mat4_mult_mat4(texture, texture, range);
       memcpy(transform, texture, sizeof(texture));
-    }
-
-    void clip(
-      mat4 transform,
-      const mat4 view
-    ) {
-      mat4 translate, scale, clip;
-      mat4_translate(translate, -128, -120, 0);
-      mat4_scale(scale, 1.f / 128, -1.f / 120, 1);
-      mat4_identity(clip);
-      mat4_mult_mat4(clip, clip, view);
-      mat4_mult_mat4(clip, clip, translate);
-      mat4_mult_mat4(clip, clip, scale);
-      memcpy(transform, clip, sizeof(clip));
     }
 
     TextureList::iterator add_tilesets(
@@ -794,6 +790,12 @@ namespace ultra::renderer {
 
   uintptr_t get_texture() {
     return renderer->get_texture();
+  }
+
+  void get_projection_transform(
+    Transform proj
+  ) {
+    renderer->get_projection_transform(proj);
   }
 
   size_t get_tile_count(
