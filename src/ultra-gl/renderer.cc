@@ -333,6 +333,30 @@ namespace ultra::renderer {
       return textures[TEXTURE_IDX_TILESETS];
     }
 
+    void get_view_transform(
+      Transform view,
+      geometry::Vector<float> camera_position,
+      size_t layer_index
+    ) {
+      mat4 camera, map, transform;
+      mat4_translate(
+        map,
+        -16.f * maps[map_index].position.x,
+        -16.f * maps[map_index].position.y,
+        0
+      );
+      mat4_translate(
+        camera,
+        -camera_position.x * maps[map_index].layers[layer_index].parallax.x,
+        -camera_position.y * maps[map_index].layers[layer_index].parallax.y,
+        0
+      );
+      mat4_identity(transform);
+      mat4_mult_mat4(transform, transform, camera);
+      mat4_mult_mat4(transform, transform, map);
+      memcpy(view, transform, sizeof(transform));
+    }
+
     void get_projection_transform(
       Transform proj
     ) {
@@ -345,41 +369,19 @@ namespace ultra::renderer {
       memcpy(proj, transform, sizeof(transform));
     }
 
-    size_t get_tile_count(
-      size_t start_layer_idx,
-      ssize_t layer_count
-    ) {
-      if (layer_count == -1) {
-        layer_count = maps[map_index].layers.size() - start_layer_idx;
-      }
+    size_t get_tile_count() {
       auto map_size = maps[map_index].size.as<size_t>();
-      auto map_area = map_size.x * map_size.y;
-      auto tile_offset = map_area * start_layer_idx;
-      auto tile_count = map_area * layer_count;
-      return tile_count;
+      return map_size.x * map_size.y;
     }
 
-    size_t get_tile_transforms(
-      Transform quad_transforms[],
+    size_t get_map_transforms(
+      Transform vertex_transforms[],
       Transform tex_transforms[],
       size_t transforms_count,
-      const geometry::Vector<float>& camera_position,
-      size_t start_layer_idx,
-      ssize_t layer_count
+      size_t layer_index
     ) {
-      if (layer_count == -1) {
-        layer_count = maps[map_index].layers.size() - start_layer_idx;
-      }
       // Get tile count.
-      auto map_size = maps[map_index].size.as<size_t>();
-      auto map_area = map_size.x * map_size.y;
-      auto tile_offset = map_area * start_layer_idx;
-      auto tile_count = map_area * layer_count;
-      // Get layer parallax.
-      geometry::Vector<float> layer_parallax[maps[map_index].layers.size()];
-      for (int i = 0; i < maps[map_index].layers.size(); i++) {
-        layer_parallax[i] = maps[map_index].layers[i].parallax;
-      }
+      auto tile_count = get_tile_count();
       // Get texture indices.
       geometry::Vector<uint32_t> texture_sizes[16];
       uint8_t texture_indices[16];
@@ -392,26 +394,23 @@ namespace ultra::renderer {
       }
       // Populate transforms.
       size_t count = 0;
-      for (size_t i = tile_offset; i < tile_offset + tile_count; i++) {
+      for (size_t i = tile_count * layer_index;
+           i < tile_count * (1 + layer_index);
+           i++) {
         if (count >= transforms_count) {
           break;
         }
         auto tile = maps[map_index].tiles[i];
         if (tile) {
-          get_tile_quad_transform(
-            quad_transforms++[0],
-            i,
-            camera_position,
-            layer_parallax
-          );
-          get_tile_texture_transform(
+          get_map_vertex_transform(vertex_transforms++[0], i);
+          get_map_texture_transform(
             tex_transforms++[0],
             tile,
             texture_sizes,
             texture_indices
           );
         } else {
-          memset(quad_transforms++[0], 0, sizeof(Transform));
+          memset(vertex_transforms++[0], 0, sizeof(Transform));
           memset(tex_transforms++[0], 0, sizeof(Transform));
         }
         count++;
@@ -430,10 +429,9 @@ namespace ultra::renderer {
     }
 
     size_t get_sprite_transforms(
-      Transform quad_transforms[],
+      Transform vertex_transforms[],
       Transform tex_transforms[],
       size_t transforms_count,
-      const geometry::Vector<float>& camera_position,
       const std::vector<const SpriteHandle*>& sprites,
       size_t layer_index
     ) {
@@ -455,10 +453,9 @@ namespace ultra::renderer {
             break;
           }
           const auto& sprite = *it;
-          get_sprite_quad_transform(
-            quad_transforms++[0],
+          get_sprite_vertex_transform(
+            vertex_transforms++[0],
             sprite.entity,
-            camera_position,
             layer_index,
             count,
             sprite_count
@@ -477,11 +474,9 @@ namespace ultra::renderer {
 
   private:
 
-    void get_tile_quad_transform(
+    void get_map_vertex_transform(
       mat4 transform,
-      size_t index,
-      const geometry::Vector<GLfloat>& camera_position,
-      const geometry::Vector<GLfloat>* layer_parallax
+      size_t index
     ) {
       auto map_size = maps[map_index].size.as<size_t>();
       auto map_area = map_size.x * map_size.y;
@@ -489,7 +484,7 @@ namespace ultra::renderer {
       auto layer_start = map_area * layer_index;
       auto layer_offset = index - layer_start;
       GLfloat layer_z = (15 - layer_index) / 16.f;
-      mat4 scale, translate, view, quad;
+      mat4 scale, translate, map, vertex;
       mat4_scale(scale, 16, 16, layer_z);
       mat4_translate(
         translate,
@@ -498,19 +493,19 @@ namespace ultra::renderer {
         0
       );
       mat4_translate(
-        view,
-        -camera_position.x * layer_parallax[layer_index].x,
-        -camera_position.y * layer_parallax[layer_index].y,
+        map,
+        16.f * maps[map_index].position.x,
+        16.f * maps[map_index].position.y,
         0
       );
-      mat4_identity(quad);
-      mat4_mult_mat4(quad, quad, scale);
-      mat4_mult_mat4(quad, quad, translate);
-      mat4_mult_mat4(quad, quad, view);
-      memcpy(transform, quad, sizeof(quad));
+      mat4_identity(vertex);
+      mat4_mult_mat4(vertex, vertex, scale);
+      mat4_mult_mat4(vertex, vertex, translate);
+      mat4_mult_mat4(vertex, vertex, map);
+      memcpy(transform, vertex, sizeof(vertex));
     }
 
-    void get_tile_texture_transform(
+    void get_map_texture_transform(
       mat4 transform,
       uint16_t tile,
       const geometry::Vector<uint32_t> texture_sizes[16],
@@ -546,10 +541,9 @@ namespace ultra::renderer {
       );
     }
 
-    void get_sprite_quad_transform(
+    void get_sprite_vertex_transform(
       mat4 transform,
       const Entity* entity,
-      const geometry::Vector<GLfloat>& camera_position,
       size_t layer_index,
       size_t sprite_index,
       size_t sprite_count
@@ -557,8 +551,7 @@ namespace ultra::renderer {
       auto tile_size = entity->tileset.tile_size;
       auto sprite_z = (sprite_count - sprite_index) / (1.f + sprite_count);
       auto layer_z = (15 - layer_index + sprite_z) / 16.f;
-      auto map_position = maps[map_index].position;
-      mat4 to, flip, from, scale, entity_transform, translate, view, quad;
+      mat4 scale, entity_transform, translate, vertex;
       mat4_scale(scale, tile_size.x, tile_size.y, layer_z);
       mat4_from_mat3(entity_transform, &entity->transform[0]);
       mat4_translate(
@@ -567,18 +560,11 @@ namespace ultra::renderer {
         entity->position.y - tile_size.y,
         0
       );
-      mat4_translate(
-        view,
-        -16.f * map_position.x - camera_position.x,
-        -16.f * map_position.y - camera_position.y,
-        0
-      );
-      mat4_identity(quad);
-      mat4_mult_mat4(quad, quad, scale);
-      mat4_mult_mat4(quad, quad, entity_transform);
-      mat4_mult_mat4(quad, quad, translate);
-      mat4_mult_mat4(quad, quad, view);
-      memcpy(transform, quad, sizeof(quad));
+      mat4_identity(vertex);
+      mat4_mult_mat4(vertex, vertex, scale);
+      mat4_mult_mat4(vertex, vertex, entity_transform);
+      mat4_mult_mat4(vertex, vertex, translate);
+      memcpy(transform, vertex, sizeof(vertex));
     }
 
     void get_sprite_texture_transform(
@@ -792,34 +778,35 @@ namespace ultra::renderer {
     return renderer->get_texture();
   }
 
+  void get_view_transform(
+    Transform view,
+    geometry::Vector<float> camera_position,
+    size_t layer_index
+  ) {
+    renderer->get_view_transform(view, camera_position, layer_index);
+  }
+
   void get_projection_transform(
     Transform proj
   ) {
     renderer->get_projection_transform(proj);
   }
 
-  size_t get_tile_count(
-    size_t start_layer_idx,
-    ssize_t layer_count
-  ) {
-    return renderer->get_tile_count(start_layer_idx, layer_count);
+  size_t get_tile_count() {
+    return renderer->get_tile_count();
   }
 
-  size_t get_tile_transforms(
-    Transform quad_transforms[],
+  size_t get_map_transforms(
+    Transform vertex_transforms[],
     Transform tex_transforms[],
     size_t transforms_count,
-    const geometry::Vector<float>& camera_position,
-    size_t start_layer_idx,
-    ssize_t layer_count
+    size_t layer_index
   ) {
-    return renderer->get_tile_transforms(
-      quad_transforms,
+    return renderer->get_map_transforms(
+      vertex_transforms,
       tex_transforms,
       transforms_count,
-      camera_position,
-      start_layer_idx,
-      layer_count
+      layer_index
     );
   }
 
@@ -830,18 +817,16 @@ namespace ultra::renderer {
   }
 
   size_t get_sprite_transforms(
-    Transform quad_transforms[],
+    Transform vertex_transforms[],
     Transform tex_transforms[],
     size_t transforms_count,
-    const geometry::Vector<float>& camera_position,
     const std::vector<const SpriteHandle*>& sprites,
     size_t layer_index
   ) {
     return renderer->get_sprite_transforms(
-      quad_transforms,
+      vertex_transforms,
       tex_transforms,
       transforms_count,
-      camera_position,
       sprites,
       layer_index
     );

@@ -53,25 +53,27 @@ namespace ultra::renderer {
   /** Get the handle to the tilesets texture in hardware. */
   uintptr_t get_texture();
 
+  /** Get the view transform for a map layer. */
+  void get_view_transform(
+    Transform view,
+    geometry::Vector<float> camera_position,
+    size_t layer_index
+  );
+
   /** Get the projection transform matrix. */
   void get_projection_transform(
     Transform proj
   );
 
-  /** Get the number of map tiles. */
-  size_t get_tile_count(
-    size_t start_layer_idx,
-    ssize_t layer_count = -1
-  );
+  /** Get the number of map tiles per layer. */
+  size_t get_tile_count();
 
   /** Get matrices for map tile layers quad transforms. */
-  size_t get_tile_transforms(
-    Transform quad_transforms[],
+  size_t get_map_transforms(
+    Transform vertex_transforms[],
     Transform tex_transforms[],
     size_t transforms_count,
-    const geometry::Vector<float>& camera_position,
-    size_t start_layer_idx,
-    ssize_t layer_count = -1
+    size_t layer_index
   );
 
   /** Get the number of sprites. */
@@ -81,10 +83,9 @@ namespace ultra::renderer {
 
   /** Get matrices for the sprite quad transforms. */
   size_t get_sprite_transforms(
-    Transform quad_transforms[],
+    Transform vertex_transforms[],
     Transform tex_transforms[],
     size_t transforms_count,
-    const geometry::Vector<float>& camera_position,
     const std::vector<const SpriteHandle*>& sprites,
     size_t layer_index
   );
