@@ -47,7 +47,7 @@ namespace ultra::renderer {
   /** Load a world to the graphics hardware. */
   void load_world(const World& world);
 
-  /** Unload the world from the hraphics hardware. */
+  /** Unload the world from the graphics hardware. */
   void unload_world();
 
   /** Get the handle to the tilesets texture in hardware. */
@@ -68,7 +68,7 @@ namespace ultra::renderer {
   /** Get the number of map tiles per layer. */
   size_t get_tile_count();
 
-  /** Get matrices for map tile layers quad transforms. */
+  /** Get matrices for map tile layers vertex and texture transforms. */
   size_t get_map_transforms(
     Transform vertex_transforms[],
     Transform tex_transforms[],
@@ -81,7 +81,7 @@ namespace ultra::renderer {
     const std::vector<const SpriteHandle*>& sprites
   );
 
-  /** Get matrices for the sprite quad transforms. */
+  /** Get matrices for the sprite vertex and texture transforms. */
   size_t get_sprite_transforms(
     Transform vertex_transforms[],
     Transform tex_transforms[],
