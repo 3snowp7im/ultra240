@@ -8,10 +8,6 @@
 
 namespace ultra::renderer {
 
-  inline constexpr uint16_t texture_width = 2048;
-  inline constexpr uint16_t texture_height = 2048;
-  inline constexpr uint16_t texture_count = 64;
-
   /** A 4x4 transformation matrix in column major order. */
   using Transform = float[16];
 
@@ -50,17 +46,41 @@ namespace ultra::renderer {
   /** Unload the world from the graphics hardware. */
   void unload_world();
 
+  /**
+   * Width of the tileset texture.
+   */
+  inline constexpr uint16_t texture_width = 2048;
+
+  /**
+   * Height of the tileset texture.
+   */
+  inline constexpr uint16_t texture_height = 2048;
+
+  /**
+   * Number of layers in the tileset texture.
+   */
+  inline constexpr uint16_t texture_count = 64;
+
   /** Get the handle to the tilesets texture in hardware. */
   uintptr_t get_texture();
 
-  /** Get the view transform for a map layer. */
+  /** 
+   * Get the view transform for a map layer.
+   *
+   * This transform should be applied to all vertices for the specified layer.
+   * The camera position is relative to the current map's top-left corner.
+   */
   void get_view_transform(
     Transform view,
-    geometry::Vector<float> camera_position,
+    const geometry::Vector<float>& camera_position,
     size_t layer_index
   );
 
-  /** Get the projection transform matrix. */
+  /** 
+   * Get the projection transform matrix.
+   *
+   * This transform should be applied to all rendered vertices.
+   */
   void get_projection_transform(
     Transform proj
   );
@@ -68,7 +88,13 @@ namespace ultra::renderer {
   /** Get the number of map tiles per layer. */
   size_t get_tile_count();
 
-  /** Get matrices for map tile layers vertex and texture transforms. */
+  /** 
+   * Get matrices for map tile layer vertex and texture transforms.
+   *
+   * This function will write at most `transforms_count` matrices to each
+   * output. Each transform returned should be applied to the 4 vertices of a
+   * unit quad with vertices (0, 0, 1), (0, 1, 1), (1, 0, 1), and (1, 1, 1).
+   */
   size_t get_map_transforms(
     Transform vertex_transforms[],
     Transform tex_transforms[],
@@ -76,12 +102,18 @@ namespace ultra::renderer {
     size_t layer_index
   );
 
-  /** Get the number of sprites. */
+  /** Get the number of sprites contained by the specified handle. */
   size_t get_sprite_count(
     const std::vector<const SpriteHandle*>& sprites
   );
 
-  /** Get matrices for the sprite vertex and texture transforms. */
+  /**
+   * Get matrices for the sprite vertex and texture transforms.
+   *
+   * This function will write at most `transforms_count` matrices to each
+   * output. Each transform returned should be applied to the 4 vertices of a
+   * unit quad with vertices (0, 0, 1), (0, 1, 1), (1, 0, 1), and (1, 1, 1).
+   */
   size_t get_sprite_transforms(
     Transform vertex_transforms[],
     Transform tex_transforms[],
