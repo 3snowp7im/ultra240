@@ -14,7 +14,7 @@ constexpr hstring<chars...> operator ""_h() {
 namespace ultra {
 
   template <typename = void>
-  struct Hash;
+  struct Hasher;
 
   /**
    * Inline function to return CRC32 digest of a string.
@@ -25,7 +25,7 @@ namespace ultra {
    * As an example, the code:
    *
    * ```c++
-   * Hash<>::Type checksum = ultra::hash("ultra"_h);
+   * Hash::Type checksum = ultra::hash("ultra"_h);
    * ```
    *
    * is equivalent to:
@@ -36,7 +36,7 @@ namespace ultra {
    */
   template <typename T>
   inline constexpr uint32_t hash(T str) {
-    return Hash<decltype(str)>::value;
+    return Hasher<decltype(str)>::value;
   }
 
   static constexpr uint32_t crc_table[] = {
@@ -106,33 +106,35 @@ namespace ultra {
     0xb40bbe37u, 0xc30c8ea1u, 0x5a05df1bu, 0x2d02ef8du,
   };
 
-  template<ssize_t idx>
+  template <ssize_t idx>
   constexpr uint32_t crc32(const char* str) {
     return (crc32<idx - 1>(str) >> 8) ^ crc_table[
       (crc32<idx - 1>(str) ^ str[idx]) & 0x000000ff
     ];
   }
 
-  template<>
+  template <>
   constexpr uint32_t crc32<-1>(const char* str) {
     return 0xffffffff;
   }
 
   template <>
-  struct Hash<> {
+  struct Hasher<> {
     using Type = uint32_t;
   };
 
+  using Hash = Hasher<>::Type;
+
   /** A compile-time CRC32 digest of the string. */
   template <char... elements>
-  struct Hash<hstring<elements...>> {
+  struct Hasher<hstring<elements...>> {
     static constexpr char str[sizeof...(elements)] = {elements...};
-    static constexpr Hash<>::Type value =
+    static constexpr Hash value =
       ~crc32<sizeof(str) - 1>(str) & 0xffffffff;
   };
 
   /** A generic map with CRC32 digest keys. */
   template <typename T>
-  using HashMap = std::map<Hash<>::Type, T>;
+  using HashMap = std::map<Hash, T>;
 
 }

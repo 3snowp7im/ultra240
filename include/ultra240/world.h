@@ -30,8 +30,6 @@ namespace ultra {
 
       /**
        * Map layer class.
-       *
-       * A map layer is a collection of tiles.
        */
       class Layer {
       public:
@@ -40,7 +38,7 @@ namespace ultra {
         Layer(std::istream& stream);
 
         /** Name of this layer. */
-        ultra::Hash<>::Type name;
+        ultra::Hash name;
 
         /** The rendered parallax of the layer. */
         geometry::Vector<float> parallax;
@@ -49,7 +47,7 @@ namespace ultra {
       /** 
        * Map entity class.
        *
-       * A map entity specifies the entity tileset and its initial state.
+       * A map entity specifies an entity tileset and its initial state.
        */
       class Entity {
       public:
@@ -61,7 +59,7 @@ namespace ultra {
         const Tileset* tileset;
 
         /** Name of the layer entity is on. */
-        ultra::Hash<>::Type layer_name;
+        ultra::Hash layer_name;
 
         /** The initial tile index. */
         uint16_t tile_index;
@@ -72,7 +70,7 @@ namespace ultra {
           bool flip_y;
         } attributes;
 
-        /** The initial entity position. */
+        /** The initial entity position in pixels. */
         geometry::Vector<uint32_t> position;
 
         /** Entity type. */
@@ -93,14 +91,14 @@ namespace ultra {
       /** Read a serialized map from a stream. */
       Map(std::istream& stream);
 
-      /** Position of the map in the world. */
+      /** Position of the map in the world in tile units. */
       geometry::Vector<int16_t> position;
 
-      /** Map dimensions. */
+      /** Map dimensions in tile units. */
       geometry::Vector<uint16_t> size;
 
       /** Map properties. */
-      std::unordered_map<Hash<>::Type, uint32_t> properties;
+      std::unordered_map<Hash, uint32_t> properties;
 
       /** Collection of map tilesets. */
       std::vector<std::shared_ptr<Tileset>> map_tilesets;

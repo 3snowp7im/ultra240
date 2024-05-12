@@ -40,7 +40,7 @@ namespace ultra {
 
         /** A collection of named collision boxes. */
         using NamedList = VectorAllocatorList<
-          std::pair<Hash<>::Type, CollisionBox>
+          std::pair<Hash, CollisionBox>
         >;
       };
 
@@ -70,7 +70,7 @@ namespace ultra {
        * This field is not used by ULTRA240 and is intended for the
        * application's own notation.
        */
-      Hash<>::Type name;
+      Hash name;
 
       /**
        * A map of collision box lists, the key to each list being the collision

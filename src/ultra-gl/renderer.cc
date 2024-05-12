@@ -135,7 +135,7 @@ namespace ultra::renderer {
       textures.reset(new Textures(TEXTURE_COUNT));
 
       // Setup the tileset texture.
-      gl_CHECK(
+      GL_CHECK(
         glBindTexture(
           GL_TEXTURE_2D_ARRAY,
           textures[TEXTURE_IDX_TILESETS]

@@ -103,7 +103,7 @@ namespace ultra {
     stream.read(reinterpret_cast<char*>(&properties_count), sizeof(uint8_t));
     for (int i = 0; i < properties_count; i++) {
       uint32_t name, value;
-      stream.read(reinterpret_cast<char*>(&name), sizeof(Hash<>::Type));
+      stream.read(reinterpret_cast<char*>(&name), sizeof(Hash));
       stream.read(reinterpret_cast<char*>(&value), sizeof(uint32_t));
       properties.emplace(name, value);
     }

@@ -42,7 +42,7 @@ namespace ultra {
       bool operator==(const AnimationControls& rhs) const;
 
       /** Name of target animation. */
-      Hash<>::Type name;
+      Hash name;
 
       /** Animation speed multiplier. */
       float speed;
@@ -51,13 +51,13 @@ namespace ultra {
       AnimationControls();
 
       /** Instance constructor with default controls. */
-      AnimationControls(Hash<>::Type name);
+      AnimationControls(Hash name);
 
       /** Instance builder. */
       class Builder {
 
         struct {
-          Hash<>::Type name;
+          Hash name;
           bool loop;
           Direction direction;
           float speed;
@@ -69,7 +69,7 @@ namespace ultra {
         Builder();
 
         /** Set the name of the target animation. */
-        Builder& name(Hash<>::Type name);
+        Builder& name(Hash name);
 
         /** Enable animation looping. */
         Builder& loop();
@@ -105,7 +105,7 @@ namespace ultra {
       } edge;
 
       /** Name of the collision box collision occurred on. */
-      Hash<>::Type name;
+      Hash name;
 
       /** Distance from collision. */
       geometry::Vector<float> distance;
@@ -147,7 +147,7 @@ namespace ultra {
 
     /** Static tile instance constructor. */
     Entity(
-      Hash<>::Type collision_box_type,
+      Hash collision_box_type,
       const World::Boundaries& boundaries,
       const Tileset& tileset,
       const geometry::Vector<float>& position,
@@ -157,7 +157,7 @@ namespace ultra {
 
     /** Animated instance constructor. */
     Entity(
-      Hash<>::Type collision_box_type,
+      Hash collision_box_type,
       const World::Boundaries& boundaries,
       const Tileset& tileset,
       const geometry::Vector<float>& position,
@@ -169,11 +169,11 @@ namespace ultra {
     virtual ~Entity();
 
     /** Return true if entity has collision boxes of a specified type. */
-    virtual bool has_collision_boxes(Hash<>::Type type) const;
+    virtual bool has_collision_boxes(Hash type) const;
 
     /** Return collision boxes of a specified type. */
     virtual const Tileset::Tile::CollisionBox::NamedList& get_collision_boxes(
-      Hash<>::Type type
+      Hash type
     ) const;
 
     /** 
@@ -198,7 +198,7 @@ namespace ultra {
      * is the current animation unless specified.
      */
     virtual bool animate(
-      Hash<>::Type collision_box_type,
+      Hash collision_box_type,
       const World::Boundaries& boundaries,
       AnimationControls animation_controls,
       bool force_restart = false
@@ -206,7 +206,7 @@ namespace ultra {
 
     /** Update the current animation tile. */
     virtual bool update_animation(
-      Hash<>::Type collision_box_type,
+      Hash collision_box_type,
       const World::Boundaries& boundaries
     );
 

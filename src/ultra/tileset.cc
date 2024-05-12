@@ -116,8 +116,8 @@ namespace ultra {
     // Load collision boxes.
     for (auto type_offset : collision_box_type_offsets) {
       stream.seekg(type_offset, stream.beg);
-      Hash<>::Type type;
-      stream.read(reinterpret_cast<char*>(&type), sizeof(Hash<>::Type));
+      Hash type;
+      stream.read(reinterpret_cast<char*>(&type), sizeof(Hash));
       uint16_t collision_box_list_count;
       stream.read(
         reinterpret_cast<char*>(&collision_box_list_count),
@@ -135,8 +135,8 @@ namespace ultra {
       size_t box_count = 0;
       for (auto list_offset : collision_box_list_offsets) {
         stream.seekg(list_offset);
-        Hash<>::Type name;
-        stream.read(reinterpret_cast<char*>(&name), sizeof(Hash<>::Type));
+        Hash name;
+        stream.read(reinterpret_cast<char*>(&name), sizeof(Hash));
         uint16_t count;
         stream.read(
           reinterpret_cast<char*>(&count),
@@ -147,14 +147,14 @@ namespace ultra {
       auto& named_list = collision_boxes.emplace(
         type,
         CollisionBox::NamedList(
-          VectorAllocator<std::pair<Hash<>::Type, CollisionBox>>(box_count)
+          VectorAllocator<std::pair<Hash, CollisionBox>>(box_count)
         )
       ).first->second;
       auto it = named_list.begin();
       for (auto list_offset : collision_box_list_offsets) {
         stream.seekg(list_offset);
-        Hash<>::Type name;
-        stream.read(reinterpret_cast<char*>(&name), sizeof(Hash<>::Type));
+        Hash name;
+        stream.read(reinterpret_cast<char*>(&name), sizeof(Hash));
         uint16_t count;
         stream.read(
           reinterpret_cast<char*>(&count),

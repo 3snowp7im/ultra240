@@ -16,14 +16,14 @@ namespace ultra {
   const static float epsilon = 1.f / 256;
 
   bool Entity::has_collision_boxes(
-    Hash<>::Type type
+    Hash type
   ) const {
     return !!tileset.tiles[tile_index].collision_boxes.count(type);
   }
 
   const Tileset::Tile::CollisionBox::NamedList&
   Entity::get_collision_boxes(
-    Hash<>::Type type
+    Hash type
   ) const {
     return tileset.tiles[tile_index].collision_boxes.at(type);
   }
@@ -116,7 +116,7 @@ namespace ultra {
   static bool set_tile_index(
     Entity& entity,
     uint16_t tile_index,
-    Hash<>::Type collision_box_type,
+    Hash collision_box_type,
     const World::Boundaries& boundaries,
     bool check_transits
   ) {
@@ -436,7 +436,7 @@ namespace ultra {
   }
 
   Entity::Entity(
-    Hash<>::Type collision_box_type,
+    Hash collision_box_type,
     const World::Boundaries& boundaries,
     const Tileset& tileset,
     const geometry::Vector<float>& position,
@@ -460,7 +460,7 @@ namespace ultra {
   }
 
   Entity::Entity(
-    Hash<>::Type collision_box_type,
+    Hash collision_box_type,
     const World::Boundaries& boundaries,
     const Tileset& tileset,
     const geometry::Vector<float>& position,
@@ -480,7 +480,7 @@ namespace ultra {
 
   Entity::AnimationControls::AnimationControls() {}
 
-  Entity::AnimationControls::AnimationControls(Hash<>::Type name)
+  Entity::AnimationControls::AnimationControls(Hash name)
     : name(name),
       loop(true),
       direction(Direction::Normal),
@@ -504,7 +504,7 @@ namespace ultra {
       }) {}
 
   Entity::AnimationControls::Builder&
-  Entity::AnimationControls::Builder::name(Hash<>::Type name) {
+  Entity::AnimationControls::Builder::name(Hash name) {
     value.name = name;
     return *this;
   }
@@ -537,7 +537,7 @@ namespace ultra {
   }
 
   bool Entity::animate(
-    Hash<>::Type collision_box_type,
+    Hash collision_box_type,
     const World::Boundaries& boundaries,
     AnimationControls animation_controls,
     bool force_restart
@@ -575,7 +575,7 @@ namespace ultra {
   }
 
   bool Entity::update_animation(
-    Hash<>::Type collision_box_type,
+    Hash collision_box_type,
     const World::Boundaries& boundaries
   ) {
     if (animation.playing) {
