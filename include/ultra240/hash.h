@@ -16,6 +16,16 @@ namespace ultra {
   template <typename = void>
   struct Hasher;
 
+  template <>
+  struct Hasher<> {
+    using Type = uint32_t;
+  };
+
+  /**
+   * Convenient alias for hash type, which is simply uint32_t.
+   */
+  using Hash = Hasher<>::Type;
+
   /**
    * Inline function to return CRC32 digest of a string.
    *
@@ -25,7 +35,7 @@ namespace ultra {
    * As an example, the code:
    *
    * ```c++
-   * Hash::Type checksum = ultra::hash("ultra"_h);
+   * Hash checksum = ultra::hash("ultra"_h);
    * ```
    *
    * is equivalent to:
@@ -35,9 +45,13 @@ namespace ultra {
    * ```
    */
   template <typename T>
-  inline constexpr uint32_t hash(T str) {
+  inline constexpr Hash hash(T str) {
     return Hasher<decltype(str)>::value;
   }
+
+  /** A generic map with CRC32 digest keys. */
+  template <typename T>
+  using HashMap = std::map<Hash, T>;
 
   static constexpr uint32_t crc_table[] = {
     0x00000000u, 0x77073096u, 0xee0e612cu, 0x990951bau,
@@ -118,13 +132,6 @@ namespace ultra {
     return 0xffffffff;
   }
 
-  template <>
-  struct Hasher<> {
-    using Type = uint32_t;
-  };
-
-  using Hash = Hasher<>::Type;
-
   /** A compile-time CRC32 digest of the string. */
   template <char... elements>
   struct Hasher<hstring<elements...>> {
@@ -132,9 +139,5 @@ namespace ultra {
     static constexpr Hash value =
       ~crc32<sizeof(str) - 1>(str) & 0xffffffff;
   };
-
-  /** A generic map with CRC32 digest keys. */
-  template <typename T>
-  using HashMap = std::map<Hash, T>;
 
 }
