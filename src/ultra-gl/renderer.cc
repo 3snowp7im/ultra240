@@ -340,7 +340,7 @@ namespace ultra::renderer {
 
     void get_view_transform(
       Transform view,
-      geometry::Vector<float> camera_position,
+      const geometry::Vector<float>& camera_position,
       size_t layer_index
     ) {
       mat4 camera, map, transform;
@@ -785,7 +785,7 @@ namespace ultra::renderer {
 
   void get_view_transform(
     Transform view,
-    geometry::Vector<float> camera_position,
+    const geometry::Vector<float>& camera_position,
     size_t layer_index
   ) {
     renderer->get_view_transform(view, camera_position, layer_index);
