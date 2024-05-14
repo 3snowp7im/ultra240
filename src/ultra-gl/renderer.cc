@@ -65,8 +65,8 @@ namespace ultra::renderer {
 
   using TextureList = std::list<Texture>;
 
-  struct Sprite {
-    const Entity* entity;
+  struct SpriteTexture {
+    const Sprite* sprite;
     const Texture* texture;
   };
 
@@ -77,7 +77,7 @@ namespace ultra::renderer {
   };
 
   struct SpriteHandle {
-    std::list<Sprite>::iterator begin;
+    std::list<SpriteTexture>::iterator begin;
     size_t count;
   };
 
@@ -292,8 +292,8 @@ namespace ultra::renderer {
       return &map_tileset_handles[index];
     }
 
-    const SpriteHandle* load_entities(
-      const std::vector<const Entity*>& entities,
+    const SpriteHandle* load_sprites(
+      const std::vector<const Sprite*>& sprites,
       const std::vector<const TilesetHandle*>& tilesets
     ) {
       // Combine the texture maps of the tileset handles.
@@ -304,24 +304,24 @@ namespace ultra::renderer {
           tileset->texture_map.cend()
         );
       }
-      // Add entities.
-      auto begin = sprites.insert(sprites.end(), entities.size(), {});
+      // Add sprites.
+      auto begin = sprites.insert(sprites.end(), sprites.size(), {});
       auto it = begin;
-      for (const auto entity : entities) {
+      for (const auto sprite : sprites) {
         *it++ = {
-          .entity = entity,
-          .texture = texture_map.at(entity->tileset.source),
+          .sprite = sprite,
+          .texture = texture_map.at(sprite->tileset.source),
         };
       }
       SpriteHandle* handle = new SpriteHandle {
         .begin = begin,
-        .count = entities.size(),
+        .count = sprites.size(),
       };
       sprite_handles.insert({handle, std::unique_ptr<SpriteHandle>(handle)});
       return handle;
     }
 
-    void unload_entities(
+    void unload_sprites(
       const std::vector<const SpriteHandle*>& handles
     ) {
       for (const auto handle : handles) {
@@ -457,19 +457,19 @@ namespace ultra::renderer {
           if (count >= transforms_count) {
             break;
           }
-          const auto& sprite = *it;
+          const auto& sprite_texture = *it;
           get_sprite_vertex_transform(
             vertex_transforms++[0],
-            sprite.entity,
+            sprite_texture.sprite,
             layer_index,
             count,
             sprite_count
           );
           get_sprite_texture_transform(
             tex_transforms++[0],
-            sprite.entity,
-            texture_sizes[sprite.texture->index],
-            texture_indices[sprite.texture->index]
+            sprite_texture.sprite,
+            texture_sizes[sprite_texture.texture->index],
+            texture_indices[sprite_texture.texture->index]
           );
           count++;
         }
@@ -548,38 +548,38 @@ namespace ultra::renderer {
 
     void get_sprite_vertex_transform(
       mat4 transform,
-      const Entity* entity,
+      const Sprite* sprite,
       size_t layer_index,
       size_t sprite_index,
       size_t sprite_count
     ) {
-      auto tile_size = entity->tileset.tile_size;
+      auto tile_size = sprite->tileset.tile_size;
       auto sprite_z = (sprite_count - sprite_index) / (1.f + sprite_count);
       auto layer_z = (15 - layer_index + sprite_z) / 16.f;
-      mat4 scale, entity_transform, translate, vertex;
+      mat4 scale, sprite_transform, translate, vertex;
       mat4_scale(scale, tile_size.x, tile_size.y, layer_z);
-      mat4_from_mat3(entity_transform, &entity->transform[0]);
+      mat4_from_mat3(sprite_transform, &sprite->transform[0]);
       mat4_translate(
         translate,
-        entity->position.x,
-        entity->position.y - tile_size.y,
+        sprite->position.x,
+        sprite->position.y - tile_size.y,
         0
       );
       mat4_identity(vertex);
       mat4_mult_mat4(vertex, vertex, scale);
-      mat4_mult_mat4(vertex, vertex, entity_transform);
+      mat4_mult_mat4(vertex, vertex, sprite_transform);
       mat4_mult_mat4(vertex, vertex, translate);
       memcpy(transform, vertex, sizeof(vertex));
     }
 
     void get_sprite_texture_transform(
       mat4 texture_transform,
-      const Entity* entity,
+      const Sprite* sprite,
       const geometry::Vector<uint32_t>& texture_size,
       uint8_t texture_index
     ) {
-      auto tile_size = entity->tileset.tile_size;
-      auto tile_index = entity->tile_index;
+      auto tile_size = sprite->tileset.tile_size;
+      auto tile_index = sprite->tile_index;
       auto pos = tile_index * tile_size;
       auto position = geometry::Vector<uint16_t>(
         pos.x % texture_size.x,
@@ -589,8 +589,8 @@ namespace ultra::renderer {
       mat4_translate(to, -.5f, -.5f, 0);
       mat4_scale(
         flip,
-        entity->attributes.flip_x ? -1 : 1,
-        entity->attributes.flip_y ? -1 : 1,
+        sprite->attributes.flip_x ? -1 : 1,
+        sprite->attributes.flip_y ? -1 : 1,
         1
       );
       mat4_translate(from, .5f, .5f, 0);
@@ -704,7 +704,7 @@ namespace ultra::renderer {
 
     TextureList texture_list;
 
-    std::list<Sprite> sprites;
+    std::list<SpriteTexture> sprites;
 
     std::queue<uint8_t> texture_indices;
 
@@ -756,15 +756,15 @@ namespace ultra::renderer {
     renderer->unload_tilesets(handles);
   }
 
-  const SpriteHandle* load_entities(
-    const std::vector<const Entity*>& entities,
+  const SpriteHandle* load_sprites(
+    const std::vector<const Sprite*>& sprites,
     const std::vector<const TilesetHandle*>& tilesets
   ) {
-    return renderer->load_entities(entities, tilesets);
+    return renderer->load_sprites(sprites, tilesets);
   }
 
-  void unload_entities(const std::vector<const SpriteHandle*>& handles) {
-    renderer->unload_entities(handles);
+  void unload_sprites(const std::vector<const SpriteHandle*>& handles) {
+    renderer->unload_sprites(handles);
   }
 
   const TilesetHandle* set_map(uint16_t index) {

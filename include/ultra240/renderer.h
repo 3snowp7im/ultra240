@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
-#include <ultra240/entity.h>
 #include <ultra240/geometry.h>
+#include <ultra240/sprite.h>
 #include <ultra240/tileset.h>
 #include <ultra240/world.h>
 
@@ -19,23 +18,32 @@ namespace ultra::renderer {
 
   /** Load a collection of tilesets to the graphics hardware. */
   const TilesetHandle* load_tilesets(
-    const std::vector<const Tileset*>& tilesets
+    const Tileset* tilesets,
+    size_t tilesets_count
   );
 
   /** Unload a collection of tilesets from the graphics hardware. */
-  void unload_tilesets(const std::vector<const TilesetHandle*>& handles);
-
-  /** 
-   * Load a collection of entities and their associated tileset handles
-   * to the graphics hardware.
-   */
-  const SpriteHandle* load_entities(
-    const std::vector<const Entity*>& entities,
-    const std::vector<const TilesetHandle*>& tilesets
+  void unload_tilesets(
+    const TilesetHandle* handles,
+    size_t handles_count
   );
 
-  /** Unload a collection of entities from the graphics hardware. */
-  void unload_entities(const std::vector<const SpriteHandle*>& handles);
+  /** 
+   * Load a collection of sprites and their associated tileset handles
+   * to the graphics hardware.
+   */
+  const SpriteHandle* load_sprites(
+    const Sprite* sprites,
+    size_t sprites_count,
+    const TilesetHandle* tilesets,
+    size_t tilesets_count
+  );
+
+  /** Unload a collection of sprites from the graphics hardware. */
+  void unload_sprites(
+    const SpriteHandle* handles,
+    size_t handles_count
+  );
 
   /** Set the current world map for rendering. */
   const TilesetHandle* set_map(uint16_t index);
@@ -104,7 +112,8 @@ namespace ultra::renderer {
 
   /** Get the number of sprites contained by the specified handle. */
   size_t get_sprite_count(
-    const std::vector<const SpriteHandle*>& sprites
+    const SpriteHandle* sprites,
+    size_t sprites_count
   );
 
   /**
@@ -118,7 +127,8 @@ namespace ultra::renderer {
     Transform vertex_transforms[],
     Transform tex_transforms[],
     size_t transforms_count,
-    const std::vector<const SpriteHandle*>& sprites,
+    const SpriteHandle* sprites,
+    size_t sprites_count,
     size_t layer_index
   );
 

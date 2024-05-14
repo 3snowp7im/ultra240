@@ -1,11 +1,11 @@
 #pragma once
 
-#include <array>
 #include <list>
 #include <memory>
 #include <vector>
 #include <ultra240/geometry.h>
 #include <ultra240/hash.h>
+#include <ultra240/sprite.h>
 #include <ultra240/tileset.h>
 #include <ultra240/world.h>
 
@@ -18,80 +18,6 @@ namespace ultra {
    */
   class Entity {
   public:
-
-    /**
-     * Structure defining controls of entity animations.
-     */ 
-    struct AnimationControls {
-
-      /** Flag that toggles animation looping. */
-      bool loop;
-
-      /** Signal defining how animation frames advance. */
-      enum Direction {
-
-        /** Animation tiles are incremented. */
-        Normal,
-
-        /** Animation tiles are decremented. */
-        Reverse,
-
-      } direction;
-
-      /** Instance compare operator. */
-      bool operator==(const AnimationControls& rhs) const;
-
-      /** Name of target animation. */
-      Hash name;
-
-      /** Animation speed multiplier. */
-      float speed;
-
-      /** Instance constructor. */
-      AnimationControls();
-
-      /** Instance constructor with default controls. */
-      AnimationControls(Hash name);
-
-      /** Instance builder. */
-      class Builder {
-
-        struct {
-          Hash name;
-          bool loop;
-          Direction direction;
-          float speed;
-        } value;
-
-      public:
-
-        /** Builder instance constructor. */
-        Builder();
-
-        /** Set the name of the target animation. */
-        Builder& name(Hash name);
-
-        /** Enable animation looping. */
-        Builder& loop();
-
-        /** Set reverse animation direction. */
-        Builder& reverse();
-
-        /** Set animation speed. */
-        Builder& speed(float speed);
-
-        /** Return built instance. */
-        AnimationControls build() const;
-      };
-    };
-
-    /** Rendering attributes. */
-    struct Attributes {
-      /** Entity is rendered flipped about its x-axis. */
-      bool flip_x = false;
-      /** Entity is rendered flipped about its y-axis. */
-      bool flip_y = false;
-    };
 
     /** General structure describing an entity collision. */
     struct Collision {
@@ -124,7 +50,7 @@ namespace ultra {
       const World::Boundaries& boundaries,
       const Tileset& tileset,
       const geometry::Vector<float>& position,
-      Attributes attributes,
+      Sprite::Attributes attributes,
       Args...
     );
 
@@ -134,7 +60,7 @@ namespace ultra {
       const World::Boundaries& boundaries,
       const Tileset& tileset,
       const geometry::Vector<float>& position,
-      Attributes attributes = {},
+      Sprite::Attributes attributes = {},
       Args... args
     );
 
@@ -151,34 +77,24 @@ namespace ultra {
       const World::Boundaries& boundaries,
       const Tileset& tileset,
       const geometry::Vector<float>& position,
-      Attributes attributes,
+      Sprite::Attributes attributes,
       uint16_t tile_index = 0
-    );
-
-    /** Animated instance constructor. */
-    Entity(
-      Hash collision_box_type,
-      const World::Boundaries& boundaries,
-      const Tileset& tileset,
-      const geometry::Vector<float>& position,
-      Attributes attributes,
-      AnimationControls animation_controls
     );
 
     /** Instance destructor. */
     virtual ~Entity();
 
     /** Return true if entity has collision boxes of a specified type. */
-    virtual bool has_collision_boxes(Hash type) const;
+    virtual bool has_collision_boxes(Hash type) const = 0;
 
     /** Return collision boxes of a specified type. */
     virtual const Tileset::Tile::CollisionBox::NamedList& get_collision_boxes(
       Hash type
-    ) const;
+    ) const = 0;
 
     /** 
      * Return the position of an entity's collision box based on the entity's
-     * position and rendering attributes.
+     * position and attributes.
      */
     virtual geometry::Vector<float> get_collision_box_position(
       const Tileset::Tile::CollisionBox& box
@@ -186,29 +102,12 @@ namespace ultra {
 
     /** 
      * Return the position of an entity's collision box based on a specified
-     * position and the entity's rendering attributes.
+     * position and the entity's attributes.
      */
     virtual geometry::Vector<float> get_collision_box_position(
       const geometry::Vector<float>& pos,
       const Tileset::Tile::CollisionBox& box
     ) const;
-
-    /**
-     * Set entity's current animation. Will not restart if the target animation
-     * is the current animation unless specified.
-     */
-    virtual bool animate(
-      Hash collision_box_type,
-      const World::Boundaries& boundaries,
-      AnimationControls animation_controls,
-      bool force_restart = false
-    );
-
-    /** Update the current animation tile. */
-    virtual bool update_animation(
-      Hash collision_box_type,
-      const World::Boundaries& boundaries
-    );
 
     /**
      * Find a collision between the entity and a boundary, if any. If there are
@@ -228,44 +127,14 @@ namespace ultra {
       const std::vector<Entity*>& entities
     );
 
-    /** The tileset associated with this entity. */
-    const Tileset& tileset;
+    /** Get sprite count. */
+    virtual size_t get_sprite_count();
+
+    /** Get sprites. */
+    virtual void get_sprites(Sprite* sprites);
 
     /** The entity world position. */
     geometry::Vector<float> position;
-
-    /** The entity attributes. */
-    Attributes attributes;
-
-    /** Tile index used for rendering and collision detection. */
-    uint16_t tile_index;
-
-    /**
-     * Transformation matrix used for rendering.
-     *
-     * This is initialized to an identity matrix via all constructors.
-     */
-    std::array<float, 9> transform;
-
-    /** The current animation settings. */
-    struct {
-
-      /** True if current animation is playing. */
-      bool playing;
-
-      /** Pointer to the current animation's tiles. */
-      const std::vector<Tileset::Tile::AnimationTile>* animation_tiles;
-
-      /** The animation controls for the current animation. */
-      AnimationControls animation_controls;
-
-      /** Frame counter for the current animation tile. */
-      uint32_t counter;
-
-      /** Iterator to the current animation tile. */
-      std::vector<Tileset::Tile::AnimationTile>::const_iterator animation_tile;
-
-    } animation;
   };
 
   template <typename T = Entity, typename... Args>
