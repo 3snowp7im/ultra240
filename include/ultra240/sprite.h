@@ -11,28 +11,14 @@ namespace ultra {
   class Sprite {
   public:
 
-    /** Rendering attributes. */
-    struct Attributes {
-      /** Sprite is rendered flipped about its x-axis. */
-      bool flip_x = false;
-      /** Sprite is rendered flipped about its y-axis. */
-      bool flip_y = false;
-    };
-
     /** Sprite constructor. */
-    inline Sprite(
+    Sprite(
       const Tileset& tileset,
       const geometry::Vector<float>& position,
-      Attributes attributes,
+      Tileset::Attributes attributes,
       uint16_t tile_index,
-      float transform[9]
-    ) : tileset(tileset),
-        position(position),
-        attributes(attributes),
-        tile_index(tile_index),
-        transform(
-          transform ? transform : {1, 0, 0, 0, 1, 0, 0, 0, 1}
-        ) {}
+      float transform[9] = nullptr
+    );
 
     /** The tileset associated with this sprite. */
     const Tileset& tileset;
@@ -41,7 +27,7 @@ namespace ultra {
     geometry::Vector<float> position;
 
     /** The sprite attributes. */
-    Attributes attributes;
+    Tileset::Attributes attributes;
 
     /** Tile index used for rendering. */
     uint16_t tile_index;

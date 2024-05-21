@@ -870,19 +870,24 @@ namespace ultra::geometry {
       : position(position), size(size) {}
 
     /** Return true if rectangle contains the specified point. */
-    bool contains(Vector<T> pos) {
+    bool contains(Vector<T> pos) const {
       return pos.x >= position.x && pos.x <= position.x + size.x
         && pos.y >= position.y && pos.y <= position.y + size.y;
     }
 
     /** Add vector to rectangle position. */
-    Rectangle operator+(Vector<T> pos) {
+    Rectangle operator+(Vector<T> pos) const {
       return Rectangle(position + pos, size);
     }
 
     /** Subtract vector from rectange position. */
-    Rectangle operator-(Vector<T> pos) {
+    Rectangle operator-(Vector<T> pos) const {
       return Rectangle(position - pos, size);
+    }
+
+    /** Return a string representation of the rectangle. */
+    std::string to_string() const {
+      return "{" + position.to_string() + "," + size.to_string() + "}";
     }
 
     Vector<T> position;

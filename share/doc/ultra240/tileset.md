@@ -27,10 +27,10 @@ Tile data entry offsets are found in the tileset file header.
 | `offset+00` | `2` | Index of the tile associated with this data. |
 | `offset+02` | `4` | Name of this tile. |
 | `offset+06` | `4` | Offset of the library name string. |
-| `offset+0a` | `1` | Count of collision box type headers (`T`) for this tile. |
-| `offset+0b` | `4*T` | Offsets of the collision box type headers. |
-| `offset+0b+4*T` | `1` | Count of tiles (`A`) in the animation. |
-| `offset+0c+4*T` | `6*A` | Animation tiles. |
+| `offset+0a` | `2` | Count of collision box type headers (`T`) for this tile. |
+| `offset+0c` | `4*T` | Offsets of the collision box type headers. |
+| `offset+0c+4*T` | `1` | Count of tiles (`A`) in the animation. |
+| `offset+0d+4*T` | `6*A` | Animation tiles. |
 
 ## Collision box type header format
 

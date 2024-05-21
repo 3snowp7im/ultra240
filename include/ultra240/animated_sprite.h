@@ -1,15 +1,16 @@
 #pragma once
 
-#include <ultra240/hash.h>
+#include <vector>
 #include <ultra240/sprite.h>
+#include <ultra240/tileset.h>
 
 namespace ultra {
 
-  struct AnimatedSprite : public Sprite {
+  /** An animated sprite. */
+  class AnimatedSprite : public Sprite {
+  public:
 
-    /**
-     * Structure defining controls of sprite animations.
-     */ 
+    /** Structure defining animation controls. */
     struct AnimationControls {
 
       /** Flag that toggles animation looping. */
@@ -26,9 +27,6 @@ namespace ultra {
 
       } direction;
 
-      /** Instance compare operator. */
-      bool operator==(const AnimationControls& rhs) const;
-
       /** Name of target animation. */
       Hash name;
 
@@ -40,6 +38,9 @@ namespace ultra {
 
       /** Instance constructor with default controls. */
       AnimationControls(Hash name);
+
+      /** Instance compare operator. */
+      bool operator==(const AnimationControls& rhs) const;
 
       /** Instance builder. */
       class Builder {
@@ -73,21 +74,91 @@ namespace ultra {
       };
     };
 
+    /** Class defining an animation. */
+    class Animation {
+    public:
+
+      /** Shorthand for Tileset's AnimationTile. */
+      using AnimationTile = Tileset::Tile::AnimationTile;
+
+      /** Animation set constructor. */
+      Animation(
+        const ultra::Tileset& tileset,
+        uint16_t tile_index,
+        AnimationControls animation_controls
+      );
+
+      /** Copy constructor. */
+      Animation(const Animation& animation);
+
+      /** Copy operator. */
+      Animation& operator=(const Animation& rhs);
+
+      /**
+       * Return new animation based on specified controls. Will return current
+       * animation if the target animation is the current animation unless
+       * specified.
+       */
+      Animation set(
+        AnimationControls controls,
+        bool force_restart
+      );
+
+      /** Return updated animation. */
+      Animation update();
+
+      /** 
+       * Get the current tile index of the animation.
+       */
+      uint16_t get_tile_index() const;
+
+      /** True if current animation is playing. */
+      bool playing;
+
+      /** The tileset the animaiton belongs to. */
+      const ultra::Tileset* tileset;
+
+      /** Pointer to the animation tile data. */
+      const Tileset::Tile* tile;
+
+      /** The animation controls for the current animation. */
+      AnimationControls animation_controls;
+
+      /** Frame counter for the current animation tile. */
+      uint32_t counter;
+
+      /** Iterator to the current animation tile. */
+      union Iterator {
+        Iterator() {}
+        std::vector<AnimationTile>::const_iterator normal;
+        std::vector<AnimationTile>::const_reverse_iterator reverse;
+        uint16_t tile_index;
+      } iterator;
+    };
+
+    /** Instance constructor. */
+    AnimatedSprite(
+      const Tileset& tileset,
+      const geometry::Vector<float>& position,
+      Tileset::Attributes attributes,
+      uint16_t tile_index,
+      float transform[9] = nullptr
+    );
+
     /**
-     * Set sprite's current animation. Will not restart if the target animation
+     * Set current animation. Will not restart if the target animation
      * is the current animation unless specified.
      */
-    virtual bool animate(
-      Hash collision_box_type,
-      const World::Boundaries& boundaries,
-      AnimationControls animation_controls,
+    void animate(
+      AnimationControls controls,
       bool force_restart = false
     );
 
     /** Update the current animation tile. */
-    virtual bool update_animation(
-      Hash collision_box_type,
-      const World::Boundaries& boundaries
-    );
+    void update_animation();
 
-  }
+    /** The current animation. */
+    Animation animation;
+  };
+
+}

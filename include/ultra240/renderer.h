@@ -24,7 +24,7 @@ namespace ultra::renderer {
 
   /** Unload a collection of tilesets from the graphics hardware. */
   void unload_tilesets(
-    const TilesetHandle* handles,
+    const TilesetHandle* handles[],
     size_t handles_count
   );
 
@@ -35,13 +35,13 @@ namespace ultra::renderer {
   const SpriteHandle* load_sprites(
     const Sprite* sprites,
     size_t sprites_count,
-    const TilesetHandle* tilesets,
+    const TilesetHandle* tileset[],
     size_t tilesets_count
   );
 
   /** Unload a collection of sprites from the graphics hardware. */
   void unload_sprites(
-    const SpriteHandle* handles,
+    const SpriteHandle* handles[],
     size_t handles_count
   );
 
@@ -112,8 +112,8 @@ namespace ultra::renderer {
 
   /** Get the number of sprites contained by the specified handle. */
   size_t get_sprite_count(
-    const SpriteHandle* sprites,
-    size_t sprites_count
+    const SpriteHandle* handles[],
+    size_t handles_count
   );
 
   /**
@@ -127,8 +127,8 @@ namespace ultra::renderer {
     Transform vertex_transforms[],
     Transform tex_transforms[],
     size_t transforms_count,
-    const SpriteHandle* sprites,
-    size_t sprites_count,
+    const SpriteHandle* handles[],
+    size_t handles_count,
     size_t layer_index
   );
 

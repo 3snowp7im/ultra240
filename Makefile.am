@@ -6,11 +6,13 @@ SUBDIRS = \
 	src/ultra
 
 pkginclude_HEADERS = \
+	include/ultra240/animated_sprite.h \
 	include/ultra240/dynamic_library.h \
 	include/ultra240/entity.h \
 	include/ultra240/geometry.h \
 	include/ultra240/hash.h \
 	include/ultra240/renderer.h \
+	include/ultra240/sprite.h \
 	include/ultra240/tileset.h \
 	include/ultra240/ultra.h \
 	include/ultra240/util.h \
