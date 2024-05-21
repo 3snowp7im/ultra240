@@ -21,6 +21,16 @@ namespace ultra {
   class Tileset {
   public:
 
+    /** Render attributes. */
+    struct Attributes {
+
+      /** Flipped about its x-axis. */
+      bool flip_x = false;
+
+      /** Flipped about its y-axis. */
+      bool flip_y = false;
+    };
+
     /** 
      * Tile data class.
      *
@@ -32,16 +42,31 @@ namespace ultra {
     public:
 
       /** Collision box class. */
-      class CollisionBox : public geometry::Rectangle<uint16_t> {
+      template <typename T>
+      class CollisionBox : public geometry::Rectangle<T> {
       public:
 
         /** Read serialized collision box from stream. */
-        CollisionBox(std::istream& stream);
+        CollisionBox(
+          Hash name,
+          std::istream& stream
+        );
+
+        /** Create collision box from position and size. */
+        CollisionBox(
+          Hash name,
+          geometry::Vector<T> position,
+          geometry::Vector<T> size
+        );
+
+        /** Default constructor. */
+        CollisionBox();
 
         /** A collection of named collision boxes. */
-        using NamedList = VectorAllocatorList<
-          std::pair<Hash, CollisionBox>
-        >;
+        using List = VectorAllocatorList<CollisionBox<T>>;
+
+        /** A name for this collision box. */
+        Hash name;
       };
 
       /** Animation tile data class. */
@@ -76,7 +101,7 @@ namespace ultra {
        * A map of collision box lists, the key to each list being the collision
        * box type.
        */
-      HashMap<CollisionBox::NamedList> collision_boxes;
+      HashMap<CollisionBox<uint16_t>::List> collision_boxes;
 
       /** Collection of animation tiles. */
       std::vector<AnimationTile> animation_tiles;
@@ -97,6 +122,38 @@ namespace ultra {
     /** Return the tile index for a specified name. */
     uint16_t get_tile_index_by_name(uint32_t name) const;
 
+    /** Get number of collision boxes of the specified type. */
+    bool get_collision_boxes_count(
+      uint16_t tile_index,
+      Hash type
+    ) const;
+
+    /** Return collision boxes of a specified type. */
+    template <typename T>
+    void get_collision_boxes(
+      Tile::CollisionBox<T>* collision_boxes,
+      uint16_t tile_index,
+      Hash type,
+      geometry::Vector<float> pos = {0, 0},
+      Attributes attributes = {
+        .flip_x = false,
+        .flip_y = false,
+      }
+    ) const;
+
+    /** 
+     * Return a collision box adjusted by the specified position and
+     * attributes.
+     */
+    Tile::CollisionBox<float> adjust_collision_box(
+      const Tile::CollisionBox<uint16_t>& collision_box,
+      geometry::Vector<float> pos = {0, 0},
+      Attributes attributes = {
+        .flip_x = false,
+        .flip_y = false,
+      }
+    ) const;
+
     /** Dimensions of each tile in the tilesheet. */
     geometry::Vector<uint16_t> tile_size;
 
@@ -113,5 +170,26 @@ namespace ultra {
 
     std::map<uint32_t, uint16_t> name_map;
   };
+
+  /** 
+   * Specialization constructor for collision boxes read from serialized tileset
+   * data.
+   */
+  template <>
+  Tileset::Tile::CollisionBox<uint16_t>::CollisionBox(
+    Hash name,
+    std::istream& stream
+  );
+
+  /**
+   * Specialization constructor for collision boxes created from floating point
+   * positions.
+   */
+  template <>
+  Tileset::Tile::CollisionBox<float>::CollisionBox(
+    Hash name,
+    geometry::Vector<float> position,
+    geometry::Vector<float> size
+  );
 
 }

@@ -4,17 +4,6 @@
 
 namespace ultra {
 
-  static std::string read_string(std::istream& stream) {
-    std::vector<char> buf;
-    buf.reserve(256);
-    char c;
-    do {
-      stream.read(&c, sizeof(c));
-      buf.push_back(c);
-    } while (c != '\0');
-    return std::string(&buf[0]);
-  }
-
   static void read(
     Tileset& ts,
     std::map<uint32_t, uint16_t>& name_map,
@@ -22,31 +11,27 @@ namespace ultra {
     std::istream& stream
   ) {
     // Read tile count.
-    uint16_t tile_count;
-    stream.read(reinterpret_cast<char*>(&tile_count), sizeof(uint16_t));
+    uint16_t tile_count = util::read<uint16_t>(stream);
     // Read width and height.
-    stream.read(reinterpret_cast<char*>(&ts.tile_size.x), sizeof(uint16_t));
-    stream.read(reinterpret_cast<char*>(&ts.tile_size.y), sizeof(uint16_t));
+    ts.tile_size.x = util::read<uint16_t>(stream);
+    ts.tile_size.y = util::read<uint16_t>(stream);
     // Read image source offset.
-    uint32_t source_offset;
-    stream.read(reinterpret_cast<char*>(&source_offset), sizeof(uint32_t));
+    uint32_t source_offset = util::read<uint32_t>(stream);
     // Read library name offset.
-    uint32_t library_offset;
-    stream.read(reinterpret_cast<char*>(&library_offset), sizeof(uint32_t));
+    uint32_t library_offset = util::read<uint32_t>(stream);
     // Read number of tile data entries.
-    uint16_t tile_data_count;
-    stream.read(reinterpret_cast<char*>(&tile_data_count), sizeof(uint16_t));
+    uint16_t tile_data_count = util::read<uint16_t>(stream);
     // Read tile offsets.
     uint32_t tile_offsets[tile_data_count];
     for (int i = 0; i < tile_data_count; i++) {
-      stream.read(reinterpret_cast<char*>(&tile_offsets[i]), sizeof(uint32_t));
+      tile_offsets[i] = util::read<uint32_t>(stream);
     }
     // Read image source.
     stream.seekg(source_offset, stream.beg);
-    ts.source = read_string(stream);
+    ts.source = util::read_string(stream);
     // Load dynamic library.
     stream.seekg(library_offset, stream.beg);
-    auto library_name = read_string(stream);
+    auto library_name = util::read_string(stream);
     if (library_name.size()) {
       library.reset(new dynamic_library::Impl(library_name.c_str()));
     }
@@ -54,8 +39,7 @@ namespace ultra {
     ts.tiles.resize(tile_count);
     for (int i = 0; i < tile_data_count; i++) {
       stream.seekg(tile_offsets[i], stream.beg);
-      uint16_t tile_index;
-      stream.read(reinterpret_cast<char*>(&tile_index), sizeof(uint16_t));
+      uint16_t tile_index = util::read<uint16_t>(stream);
       ts.tiles[tile_index].read(stream);
       name_map.insert({ts.tiles[tile_index].name, tile_index});
     }
@@ -77,30 +61,18 @@ namespace ultra {
 
   void Tileset::Tile::read(std::istream& stream) {
     // Read tile name.
-    stream.read(reinterpret_cast<char*>(&name), sizeof(uint32_t));
+    name = util::read<uint32_t>(stream);
     // Read library offset.
-    uint32_t library_offset;
-    stream.read(reinterpret_cast<char*>(&library_offset), sizeof(uint32_t));
+    uint32_t library_offset = util::read<uint32_t>(stream);
     // Read collision box type count.
-    uint16_t collision_box_type_count;
-    stream.read(
-      reinterpret_cast<char*>(&collision_box_type_count),
-      sizeof(uint16_t)
-    );
+    uint16_t collision_box_type_count = util::read<uint16_t>(stream);
     // Read collision box offset.
     std::vector<uint32_t> collision_box_type_offsets(collision_box_type_count);
     for (int i = 0; i < collision_box_type_count; i++) {
-      stream.read(
-        reinterpret_cast<char*>(&collision_box_type_offsets[i]),
-        sizeof(uint32_t)
-      );
+      collision_box_type_offsets[i] = util::read<uint32_t>(stream);
     }
     // Read animation tile count.
-    uint8_t animation_tile_count;
-    stream.read(
-      reinterpret_cast<char*>(&animation_tile_count),
-      sizeof(uint8_t)
-    );
+    uint8_t animation_tile_count = util::read<uint8_t>(stream);
     // Read animation tiles.
     animation_tiles.reserve(animation_tile_count);
     for (int i = 0; i < animation_tile_count; i++) {
@@ -109,76 +81,160 @@ namespace ultra {
     }
     // Load dynamic library.
     stream.seekg(library_offset, stream.beg);
-    auto library_name = read_string(stream);
+    auto library_name = util::read_string(stream);
     if (library_name.size()) {
       library.reset(new dynamic_library::Impl(library_name.c_str()));
     }
     // Load collision boxes.
     for (auto type_offset : collision_box_type_offsets) {
       stream.seekg(type_offset, stream.beg);
-      Hash type;
-      stream.read(reinterpret_cast<char*>(&type), sizeof(Hash));
-      uint16_t collision_box_list_count;
-      stream.read(
-        reinterpret_cast<char*>(&collision_box_list_count),
-        sizeof(uint16_t)
-      );
+      Hash type = util::read<Hash>(stream);
+      uint16_t collision_box_list_count  = util::read<uint16_t>(stream);
       std::vector<uint32_t> collision_box_list_offsets(
         collision_box_list_count
       );
       for (int i = 0; i < collision_box_list_count; i++) {
-        stream.read(
-          reinterpret_cast<char*>(&collision_box_list_offsets[i]),
-          sizeof(uint32_t)
-        );
+        collision_box_list_offsets[i] = util::read<uint32_t>(stream);
       }
       size_t box_count = 0;
       for (auto list_offset : collision_box_list_offsets) {
         stream.seekg(list_offset);
-        Hash name;
-        stream.read(reinterpret_cast<char*>(&name), sizeof(Hash));
-        uint16_t count;
-        stream.read(
-          reinterpret_cast<char*>(&count),
-          sizeof(uint16_t)
-        );
-        box_count += count;
+        util::read<Hash>(stream);
+        box_count += util::read<uint16_t>(stream);
       }
       auto& named_list = collision_boxes.emplace(
         type,
-        CollisionBox::NamedList(
-          VectorAllocator<std::pair<Hash, CollisionBox>>(box_count)
+        CollisionBox<uint16_t>::List(
+          VectorAllocator<CollisionBox<uint16_t>>(box_count)
         )
       ).first->second;
       auto it = named_list.begin();
       for (auto list_offset : collision_box_list_offsets) {
         stream.seekg(list_offset);
-        Hash name;
-        stream.read(reinterpret_cast<char*>(&name), sizeof(Hash));
-        uint16_t count;
-        stream.read(
-          reinterpret_cast<char*>(&count),
-          sizeof(uint16_t)
-        );
+        Hash name = util::read<Hash>(stream);
+        uint16_t count = util::read<uint16_t>(stream);
         for (int i = 0; i < count; i++) {
-          named_list.emplace_back(std::make_pair(name, CollisionBox(stream)));
+          named_list.emplace_back(CollisionBox<uint16_t>(name, stream));
         }
       }
     }
   }
 
-  Tileset::Tile::CollisionBox::CollisionBox(std::istream& stream)
-    : geometry::Rectangle<uint16_t>({0, 0}, {0, 0}) {
-    stream.read(reinterpret_cast<char*>(&position.x), sizeof(uint16_t));
-    stream.read(reinterpret_cast<char*>(&position.y), sizeof(uint16_t));
-    stream.read(reinterpret_cast<char*>(&size.x), sizeof(uint16_t));
-    stream.read(reinterpret_cast<char*>(&size.y), sizeof(uint16_t));
+  Tileset::Tile::CollisionBox<float> Tileset::adjust_collision_box(
+    const Tile::CollisionBox<uint16_t>& box,
+    geometry::Vector<float> pos,
+    Attributes attributes
+  ) const {
+    if (attributes.flip_x && attributes.flip_y) {
+      return Tile::CollisionBox<float>(
+        box.name,
+        pos
+        + tile_size.as_x().as<float>()
+        - box.position.as<float>()
+        - box.size.as<float>(),
+        box.size
+      );
+    } else if (attributes.flip_y) {
+      return Tile::CollisionBox<float>(
+        box.name,
+        pos
+        + box.position.as_x().as<float>()
+        - box.position.as_y().as<float>()
+        - box.size.as_y().as<float>(),
+        box.size
+      );
+    } else if (attributes.flip_x) {
+      return Tile::CollisionBox<float>(
+        box.name,
+        pos
+        + tile_size.as_x().as<float>()
+        - tile_size.as_y().as<float>()
+        - box.position.as_x().as<float>()
+        + box.position.as_y().as<float>()
+        - box.size.as_x().as<float>(),
+        box.size
+      );
+    }
+    return Tile::CollisionBox<float>(
+      box.name,
+      pos
+      - tile_size.as_y().as<float>()
+      + box.position.as<float>(),
+      box.size
+    );
   }
 
-  Tileset::Tile::AnimationTile::AnimationTile(std::istream& stream) {
-    stream.read(reinterpret_cast<char*>(&tile_index), sizeof(uint16_t));
-    stream.read(reinterpret_cast<char*>(&duration), sizeof(uint16_t));
+  bool Tileset::get_collision_boxes_count(
+    uint16_t tile_index,
+    Hash type
+  ) const {
+    auto it = tiles[tile_index].collision_boxes.find(type);
+    if (it == tiles[tile_index].collision_boxes.end()) {
+      return 0;
+    }
+    return it->second.size();
   }
+
+  template <>
+  void Tileset::get_collision_boxes<float>(
+    Tile::CollisionBox<float>* collision_boxes,
+    uint16_t tile_index,
+    Hash type,
+    geometry::Vector<float> pos,
+    Attributes attributes
+  ) const {
+    auto it = tiles[tile_index].collision_boxes.find(type);
+    if (it == tiles[tile_index].collision_boxes.end()) {
+      return;
+    }
+    for (const auto& box : it->second) {
+      *collision_boxes++ = adjust_collision_box(box, pos, attributes);
+    }
+  }
+
+  template <>
+  void Tileset::get_collision_boxes<uint16_t>(
+    Tile::CollisionBox<uint16_t>* collision_boxes,
+    uint16_t tile_index,
+    Hash type,
+    geometry::Vector<float> pos,
+    Attributes attributes
+  ) const {
+    auto it = tiles[tile_index].collision_boxes.find(type);
+    if (it == tiles[tile_index].collision_boxes.end()) {
+      return;
+    }
+    for (const auto& box : it->second) {
+      *collision_boxes++ = box;
+    }
+  }
+
+  template <>
+  Tileset::Tile::CollisionBox<uint16_t>::CollisionBox(
+    Hash name,
+    std::istream& stream
+  ) : name(name),
+      geometry::Rectangle<uint16_t>(util::read_rectangle<uint16_t>(stream)) {}
+
+  template <>
+  Tileset::Tile::CollisionBox<uint16_t>::CollisionBox()
+    : geometry::Rectangle<uint16_t>({0, 0}, {0, 0}) {}
+
+  template <>
+  Tileset::Tile::CollisionBox<float>::CollisionBox(
+    Hash name,
+    geometry::Vector<float> position,
+    geometry::Vector<float> size
+  ) : name(name),
+      geometry::Rectangle<float>(position, size) {}
+
+  template <>
+  Tileset::Tile::CollisionBox<float>::CollisionBox()
+    : geometry::Rectangle<float>({0, 0}, {0, 0}) {}
+
+  Tileset::Tile::AnimationTile::AnimationTile(std::istream& stream)
+    : tile_index(util::read<uint16_t>(stream)),
+      duration(util::read<uint16_t>(stream)) {}
 
   uint16_t Tileset::get_tile_index_by_name(uint32_t name) const {
     return name_map.at(name);

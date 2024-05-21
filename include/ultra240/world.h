@@ -52,26 +52,20 @@ namespace ultra {
       class Entity {
       public:
 
-        /** Read a serialized entity from a stream. */
-        Entity(std::istream& stream);
-
-        /** Pointer to the entity tileset. */
-        const Tileset* tileset;
+        /** Instance constructor */
+        Entity(
+          const std::shared_ptr<Tileset>* tileset,
+          std::istream& stream
+        );
 
         /** Name of the layer entity is on. */
-        ultra::Hash layer_name;
+        Hash layer_name;
+
+        /** The initial entity position in pixels. */
+        geometry::Vector<uint16_t> position;
 
         /** The initial tile index. */
         uint16_t tile_index;
-
-        /** The initial entity attributes. */
-        struct {
-          bool flip_x;
-          bool flip_y;
-        } attributes;
-
-        /** The initial entity position in pixels. */
-        geometry::Vector<uint32_t> position;
 
         /** Entity type. */
         uint16_t type;
@@ -86,6 +80,15 @@ namespace ultra {
          * the application to interpret it.
          */
         uint32_t state;
+
+        /** Pointer to the entity tileset. */
+        const Tileset& tileset;
+
+        /** The initial entity attributes. */
+        struct {
+          bool flip_x;
+          bool flip_y;
+        } attributes;
       };
 
       /** Read a serialized map from a stream. */
@@ -168,8 +171,59 @@ namespace ultra {
       uint8_t flags;
     };
 
+    /** General structure describing a collision. */
+    struct Collision {
+
+      /** Signal defining which collision box edge collision occurred on. */
+      enum Edge {
+        Top,
+        Right,
+        Bottom,
+        Left,
+      } edge;
+
+      /** Name of the collision box on which collision occurred on. */
+      Hash name;
+
+      /** Distance from collision. */
+      geometry::Vector<float> distance;
+    };
+
     /** Fixed size vector backed list of boundaries. */
     using Boundaries = VectorAllocatorList<Boundary>;
+
+    /** Structure describing an entity collision with a boundary. */
+    struct BoundaryCollision : Collision {
+
+      /** Iterator pointing to the boundary the entity collided with. */
+      typename Boundaries::const_iterator boundary;
+    };
+
+    /**
+     * Find a collision between collision boxes and a boundary, if any. If
+     * there are no collisions, the first element of the returned pair is false,
+     * and the collision data contains no information.
+     */
+    static std::pair<bool, BoundaryCollision> get_boundary_collision(
+      geometry::Vector<float> force,
+      const Tileset::Tile::CollisionBox<float>* collision_boxes,
+      size_t collision_boxes_count,
+      const Boundaries& boundaries
+    );
+
+    /**
+     * Determines if a new collection of collision boxes can fit in within the
+     * specified boundries. If so, the first element of the returned pair is
+     * true and the second is the position offset required to make the fit.
+     */
+    static std::pair<bool, geometry::Vector<float>> can_fit_collision_boxes(
+      const Tileset::Tile::CollisionBox<float>* prev_collision_boxes,
+      size_t prev_collision_boxes_count,
+      const Tileset::Tile::CollisionBox<float>* next_collision_boxes,
+      size_t next_collision_boxes_count,
+      const Boundaries& boundaries,
+      bool check_transits
+    );
 
     /** Load serialized world from specified file name. */
     World(const std::string& name);
