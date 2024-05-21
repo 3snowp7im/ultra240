@@ -13,8 +13,8 @@ perfecting a small subset of features that relate to a specific use case.
 ULTRA240 has three major features:
 
 * Loading compiled game resources and code
-* Effeciently rendering tiles
 * Detecting entity collisions
+* Managing tileset textures in graphics hardware
 
 While I plan on eventually providing this software with an open source
 license, it is currently UNLICENSED. You may use and modify it as you see fit,
