@@ -1,7 +1,6 @@
 lib_LTLIBRARIES = libultra.la
 libultra_la_SOURCES = \
 	animated_sprite.cc \
-	entity.cc \
 	image.cc \
 	renderer.cc \
 	sprite.cc \

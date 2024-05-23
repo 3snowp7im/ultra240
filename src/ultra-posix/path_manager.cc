@@ -17,17 +17,17 @@ namespace ultra::path_manager {
     if (sb.st_size == 0) {
       sb.st_size = PATH_MAX;
     }
-    char exe[sb.st_size + 1];
-    if (readlink("/proc/self/exe", exe, sb.st_size + 1) < 0) {
+    char c_exe[sb.st_size + 1];
+    if (readlink("/proc/self/exe", c_exe, sb.st_size + 1) < 0) {
       throw error(__FILE__, __LINE__, "readlink error");
     }
-    exe[sb.st_size] = '\0';
-    std::string sexe(exe);
-    size_t last_slash_idx = sexe.rfind('/');
+    c_exe[sb.st_size] = '\0';
+    std::string exe(c_exe);
+    size_t last_slash_idx = exe.rfind('/');
     if (last_slash_idx != std::string::npos) {
-      sexe = sexe.substr(0, last_slash_idx);
+      exe = exe.substr(0, last_slash_idx);
     }
-    return sexe;
+    return exe;
   }
 
   void init(const std::string& name) {

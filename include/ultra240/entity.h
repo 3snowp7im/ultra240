@@ -7,11 +7,7 @@
 
 namespace ultra {
 
-  /**
-   * Base entity class.
-   *
-   * Entities are dynamic objects in the world.
-   */
+  /** Base entity class. */
   class Entity {
   public:
 
@@ -44,11 +40,8 @@ namespace ultra {
 
     };
 
-    /** Instance constructor. */
-    Entity();
-
     /** Instance destructor. */
-    virtual ~Entity();
+    inline virtual ~Entity() {}
   };
 
   template <typename T>

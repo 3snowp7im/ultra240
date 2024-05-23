@@ -11,7 +11,9 @@ namespace ultra {
    * A vector allocator is a dynamic allocator with a fixed size backing array.
    * This is useful as a backend for link-list data structures because it
    * eliminates dynamic heap allocation while preserving the benefits of a non-
-   * contiguous collection.
+   * contiguous collection. In practice, the list can be appended and pruned
+   * after initializing without incurring the runtime performance penalty caused
+   * by heap allocation bookkeeping.
    */
   template <typename T>
   class VectorAllocator {

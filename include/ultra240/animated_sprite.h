@@ -107,9 +107,7 @@ namespace ultra {
       /** Return updated animation. */
       Animation update();
 
-      /** 
-       * Get the current tile index of the animation.
-       */
+      /** Get the current tile index of the animation. */
       uint16_t get_tile_index() const;
 
       /** Name of the animation. */
@@ -159,8 +157,8 @@ namespace ultra {
     );
 
     /**
-     * Set current animation. Will not restart if the target animation
-     * is the current animation unless specified.
+     * Set current animation. Unless specified, this will not restart if the
+     * target animation is the current animation.
      */
     void animate(
       Hash name,

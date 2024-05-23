@@ -177,7 +177,7 @@ namespace ultra {
 
   template <>
   void Tileset::get_collision_boxes<float>(
-    Tile::CollisionBox<float>* collision_boxes,
+    Tile::CollisionBox<float> collision_boxes[],
     uint16_t tile_index,
     Hash type,
     geometry::Vector<float> pos,
@@ -194,7 +194,7 @@ namespace ultra {
 
   template <>
   void Tileset::get_collision_boxes<uint16_t>(
-    Tile::CollisionBox<uint16_t>* collision_boxes,
+    Tile::CollisionBox<uint16_t> collision_boxes[],
     uint16_t tile_index,
     Hash type,
     geometry::Vector<float> pos,

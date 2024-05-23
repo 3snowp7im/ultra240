@@ -176,7 +176,7 @@ namespace ultra::renderer {
     }
 
     const TilesetHandle* load_tilesets(
-      const Tileset* tilesets,
+      const Tileset tilesets[],
       size_t tilesets_count
     ) {
       const Tileset* ptrs[tilesets_count];
@@ -299,7 +299,7 @@ namespace ultra::renderer {
     }
 
     const SpriteHandle* load_sprites(
-      const Sprite* sprites,
+      const Sprite sprites[],
       size_t sprites_count,
       const TilesetHandle* tilesets[],
       size_t tilesets_count
@@ -762,7 +762,7 @@ namespace ultra::renderer {
   }
 
   const TilesetHandle* load_tilesets(
-    const Tileset* tilesets,
+    const Tileset tilesets[],
     size_t tilesets_count
   ) {
     return renderer->load_tilesets(tilesets, tilesets_count);
@@ -776,7 +776,7 @@ namespace ultra::renderer {
   }
 
   const SpriteHandle* load_sprites(
-    const Sprite* sprites,
+    const Sprite sprites[],
     size_t sprites_count,
     const TilesetHandle* tilesets[],
     size_t tilesets_count

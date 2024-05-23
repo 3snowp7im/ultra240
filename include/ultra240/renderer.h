@@ -18,7 +18,7 @@ namespace ultra::renderer {
 
   /** Load a collection of tilesets to the graphics hardware. */
   const TilesetHandle* load_tilesets(
-    const Tileset* tilesets,
+    const Tileset tilesets[],
     size_t tilesets_count
   );
 
@@ -33,7 +33,7 @@ namespace ultra::renderer {
    * to the graphics hardware.
    */
   const SpriteHandle* load_sprites(
-    const Sprite* sprites,
+    const Sprite sprites[],
     size_t sprites_count,
     const TilesetHandle* tileset[],
     size_t tilesets_count
@@ -45,14 +45,14 @@ namespace ultra::renderer {
     size_t handles_count
   );
 
-  /** Set the current world map for rendering. */
-  const TilesetHandle* set_map(uint16_t index);
-
   /** Load a world to the graphics hardware. */
   void load_world(const World& world);
 
   /** Unload the world from the graphics hardware. */
   void unload_world();
+
+  /** Set the current world map for rendering. */
+  const TilesetHandle* set_map(uint16_t index);
 
   /** Width of the tileset texture. */
   inline constexpr uint16_t texture_width = 2048;

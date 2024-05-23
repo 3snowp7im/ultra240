@@ -116,9 +116,9 @@ namespace ultra {
   }
 
   std::pair<bool, geometry::Vector<float>> World::can_fit_collision_boxes(
-    const Tileset::Tile::CollisionBox<float>* prev_collision_boxes,
+    const Tileset::Tile::CollisionBox<float> prev_collision_boxes[],
     size_t prev_collision_boxes_count,
-    const Tileset::Tile::CollisionBox<float>* next_collision_boxes,
+    const Tileset::Tile::CollisionBox<float> next_collision_boxes[],
     size_t next_collision_boxes_count,
     const Boundaries& boundaries,
     bool check_transits
@@ -409,7 +409,7 @@ namespace ultra {
 
   std::pair<bool, World::BoundaryCollision> World::get_boundary_collision(
     geometry::Vector<float> force,
-    const Tileset::Tile::CollisionBox<float>* collision_boxes,
+    const Tileset::Tile::CollisionBox<float> collision_boxes[],
     size_t collision_boxes_count,
     const World::Boundaries& boundaries
   ) {
@@ -966,7 +966,7 @@ namespace ultra {
       parallax(read_parallax(stream)) {}
 
   World::Map::Entity::Entity(
-    const std::shared_ptr<Tileset>* entity_tilesets,
+    const std::shared_ptr<Tileset> entity_tilesets[],
     std::istream& stream
   ) : layer_name(util::read<Hash>(stream)),
       position(util::read_vector<uint16_t>(stream)),

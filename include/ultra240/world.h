@@ -204,7 +204,7 @@ namespace ultra {
      */
     static std::pair<bool, BoundaryCollision> get_boundary_collision(
       geometry::Vector<float> force,
-      const Tileset::Tile::CollisionBox<float>* collision_boxes,
+      const Tileset::Tile::CollisionBox<float> collision_boxes[],
       size_t collision_boxes_count,
       const Boundaries& boundaries
     );
@@ -215,9 +215,9 @@ namespace ultra {
      * true and the second is the position offset required to make the fit.
      */
     static std::pair<bool, geometry::Vector<float>> can_fit_collision_boxes(
-      const Tileset::Tile::CollisionBox<float>* prev_collision_boxes,
+      const Tileset::Tile::CollisionBox<float> prev_collision_boxes[],
       size_t prev_collision_boxes_count,
-      const Tileset::Tile::CollisionBox<float>* next_collision_boxes,
+      const Tileset::Tile::CollisionBox<float> next_collision_boxes[],
       size_t next_collision_boxes_count,
       const Boundaries& boundaries,
       bool check_transits

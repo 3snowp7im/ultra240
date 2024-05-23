@@ -34,7 +34,7 @@ namespace ultra {
     /** 
      * Tile data class.
      *
-     * Tile data can include collision boxes, animations, and an associtade code
+     * Tile data can include collision boxes, animations, and an associated code
      * library. A code library is useful on a per tile basis when a map tileset
      * is used to define entities.
      */
@@ -128,10 +128,15 @@ namespace ultra {
       Hash type
     ) const;
 
-    /** Return collision boxes of a specified type. */
+    /** 
+     * Return collision boxes of a specified type.
+     *
+     * The collision box positions will be adjusted with the specified
+     * position offset and attributes taken into account.
+     */
     template <typename T>
     void get_collision_boxes(
-      Tile::CollisionBox<T>* collision_boxes,
+      Tile::CollisionBox<T> collision_boxes[],
       uint16_t tile_index,
       Hash type,
       geometry::Vector<float> pos = {0, 0},
