@@ -5,9 +5,7 @@
 
 namespace ultra {
 
-  /**
-   * Sprite class.
-   */
+  /** Base sprite class. */
   class Sprite {
   public:
 

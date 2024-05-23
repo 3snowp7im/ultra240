@@ -28,9 +28,7 @@ namespace ultra {
     class Map {
     public:
 
-      /**
-       * Map layer class.
-       */
+      /** Map layer class. */
       class Layer {
       public:
 

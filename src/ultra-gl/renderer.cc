@@ -162,7 +162,7 @@ namespace ultra::renderer {
           GL_RGBA8,
           texture_width,
           texture_height,
-          texture_count
+          texture_layers
         )
       );
 

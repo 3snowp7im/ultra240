@@ -54,20 +54,14 @@ namespace ultra::renderer {
   /** Unload the world from the graphics hardware. */
   void unload_world();
 
-  /**
-   * Width of the tileset texture.
-   */
+  /** Width of the tileset texture. */
   inline constexpr uint16_t texture_width = 2048;
 
-  /**
-   * Height of the tileset texture.
-   */
+  /** Height of the tileset texture. */
   inline constexpr uint16_t texture_height = 2048;
 
-  /**
-   * Number of layers in the tileset texture.
-   */
-  inline constexpr uint16_t texture_count = 64;
+  /** Number of layers in the tileset texture. */
+  inline constexpr uint16_t texture_layers = 64;
 
   /** Get the handle to the tilesets texture in hardware. */
   uintptr_t get_texture();
