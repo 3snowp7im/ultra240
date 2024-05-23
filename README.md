@@ -16,10 +16,6 @@ ULTRA240 has three major features:
 * Detecting entity collisions
 * Managing tileset textures in graphics hardware
 
-While I plan on eventually providing this software with an open source
-license, it is currently UNLICENSED. You may use and modify it as you see fit,
-however you may not distribute it in any form for any reason.
-
 ## Recommended software
 
 * [ULTRA240 SDK](https://github.com/3snowp7im/ultra240-sdk) - Collection of
@@ -39,10 +35,31 @@ To install the build dependencies on Ubuntu:
 $ sudo apt-get install build-essential libgl-dev
 ```
 
-### Building a non-release version
+### Building a release version
 
-There are currently no release versions of the code. To build from the current
-working version, install the GNU autotools.
+First, unpack the release archive:
+
+```shell
+$ tar xf ultra240-x.x.x.tar.gz
+$ cd ultra240-x.x.x
+```
+
+It is recommended to build the software outside the source directories:
+
+```shell
+$ mkdir build
+$ cd build
+$ ../configure
+```
+
+Finally, build and install the software:
+
+```shell
+$ make
+$ sudo make install
+```
+
+### Building a non-release version
 
 To install autotools on Ubuntu:
 
