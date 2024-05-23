@@ -11,7 +11,7 @@ namespace ultra {
   public:
 
     /** Structure defining animation controls. */
-    struct AnimationControls {
+    struct Controls {
 
       /** Flag that toggles animation looping. */
       bool loop;
@@ -31,10 +31,10 @@ namespace ultra {
       float speed;
 
       /** Instance constructor. */
-      AnimationControls();
+      Controls();
 
       /** Instance compare operator. */
-      bool operator==(const AnimationControls& rhs) const;
+      bool operator==(const Controls& rhs) const;
 
       /** Instance builder. */
       class Builder {
@@ -63,7 +63,7 @@ namespace ultra {
         Builder& speed(float speed);
 
         /** Return built instance. */
-        AnimationControls build() const;
+        Controls build() const;
       };
     };
 
@@ -84,7 +84,7 @@ namespace ultra {
       Animation(
         const ultra::Tileset& tileset,
         Hash name,
-        const AnimationControls& animation_controls
+        const Controls& controls
       );
 
       /** Copy constructor. */
@@ -100,7 +100,7 @@ namespace ultra {
        */
       Animation set(
         Hash name,
-        AnimationControls controls,
+        const Controls& controls,
         bool force_restart
       );
 
@@ -125,7 +125,7 @@ namespace ultra {
       const Tileset::Tile* tile;
 
       /** The animation controls for the current animation. */
-      AnimationControls animation_controls;
+      Controls controls;
 
       /** Frame counter for the current animation tile. */
       uint32_t counter;
@@ -143,7 +143,7 @@ namespace ultra {
     AnimatedSprite(
       const Tileset& tileset,
       Hash name,
-      const AnimationControls& animation_controls,
+      const Controls& animation_controls,
       const geometry::Vector<float>& position,
       Tileset::Attributes attributes,
       float transform[9] = nullptr
@@ -164,7 +164,7 @@ namespace ultra {
      */
     void animate(
       Hash name,
-      AnimationControls controls,
+      const Controls& controls,
       bool force_restart = false
     );
 

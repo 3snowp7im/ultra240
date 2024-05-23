@@ -3,61 +3,61 @@
 
 namespace ultra {
 
-  AnimatedSprite::AnimationControls::AnimationControls()
+  AnimatedSprite::Controls::Controls()
     : loop(true),
       direction(Direction::Normal),
       speed(1) {}
 
-  bool AnimatedSprite::AnimationControls::operator==(
-    const AnimationControls& rhs
+  bool AnimatedSprite::Controls::operator==(
+    const Controls& rhs
   ) const {
     return loop == rhs.loop
       && direction == rhs.direction
       && speed == rhs.speed;
   }
 
-  AnimatedSprite::AnimationControls::Builder::Builder()
+  AnimatedSprite::Controls::Builder::Builder()
     : value({
         .loop = false,
         .direction = Direction::Normal,
         .speed = 1,
       }) {}
 
-  AnimatedSprite::AnimationControls::Builder&
-  AnimatedSprite::AnimationControls::Builder::loop() {
+  AnimatedSprite::Controls::Builder&
+  AnimatedSprite::Controls::Builder::loop() {
     value.loop = true;
     return *this;
   }
 
-  AnimatedSprite::AnimationControls::Builder&
-  AnimatedSprite::AnimationControls::Builder::reverse() {
+  AnimatedSprite::Controls::Builder&
+  AnimatedSprite::Controls::Builder::reverse() {
     value.direction = Direction::Reverse;
     return *this;
   }
 
-  AnimatedSprite::AnimationControls::Builder&
-  AnimatedSprite::AnimationControls::Builder::speed(float speed) {
+  AnimatedSprite::Controls::Builder&
+  AnimatedSprite::Controls::Builder::speed(float speed) {
     value.speed = speed;
     return *this;
   }
 
-  AnimatedSprite::AnimationControls
-  AnimatedSprite::AnimationControls::Builder::build() const {
-    AnimationControls animation_controls;
-    animation_controls.loop = value.loop;
-    animation_controls.direction = value.direction;
-    animation_controls.speed = value.speed;
-    return animation_controls;
+  AnimatedSprite::Controls
+  AnimatedSprite::Controls::Builder::build() const {
+    Controls controls;
+    controls.loop = value.loop;
+    controls.direction = value.direction;
+    controls.speed = value.speed;
+    return controls;
   }
 
   AnimatedSprite::AnimatedSprite(
     const Tileset& tileset,
     Hash name,
-    const AnimationControls& animation_controls,
+    const Controls& controls,
     const geometry::Vector<float>& position,
     Tileset::Attributes attributes,
     float transform[9]
-  ) : animation(tileset, name, animation_controls),
+  ) : animation(tileset, name, controls),
       ultra::Sprite(
         tileset,
         tileset.get_tile_index_by_name(name),
@@ -87,11 +87,11 @@ namespace ultra {
   ) {
     if (animation.tile->animation_tiles.size()) {
       animation.playing = true;
-      switch (animation.animation_controls.direction) {
-      case AnimatedSprite::AnimationControls::Direction::Normal:
+      switch (animation.controls.direction) {
+      case AnimatedSprite::Controls::Direction::Normal:
         animation.iterator.normal = animation.tile->animation_tiles.cbegin();
         break;
-      case AnimatedSprite::AnimationControls::Direction::Reverse:
+      case AnimatedSprite::Controls::Direction::Reverse:
         animation.iterator.reverse = animation.tile->animation_tiles.crbegin();
         break;
       }
@@ -104,10 +104,10 @@ namespace ultra {
   AnimatedSprite::Animation::Animation(
     const ultra::Tileset& tileset,
     Hash name,
-    const AnimatedSprite::AnimationControls& animation_controls
+    const AnimatedSprite::Controls& controls
   ) : name(name),
       tileset(&tileset),
-      animation_controls(animation_controls),
+      controls(controls),
       counter(0) {
     uint16_t tile_index = tileset.get_tile_index_by_name(name);
     tile = &tileset.tiles[tile_index];
@@ -128,16 +128,16 @@ namespace ultra {
     const Animation& animation
   ) : name(animation.name),
       tileset(animation.tileset),
-      animation_controls(animation.animation_controls),
+      controls(animation.controls),
       counter(animation.counter),
       tile(animation.tile),
       playing(animation.playing) {
     if (animation.tile->animation_tiles.size()) {
-      switch (animation.animation_controls.direction) {
-      case AnimatedSprite::AnimationControls::Direction::Normal:
+      switch (animation.controls.direction) {
+      case AnimatedSprite::Controls::Direction::Normal:
         iterator.normal = animation.iterator.normal;
         break;
-      case AnimatedSprite::AnimationControls::Direction::Reverse:
+      case AnimatedSprite::Controls::Direction::Reverse:
         iterator.reverse = animation.iterator.reverse;
         break;
       }
@@ -153,14 +153,14 @@ namespace ultra {
     playing = rhs.playing;
     tileset = rhs.tileset;
     tile = rhs.tile;
-    animation_controls = rhs.animation_controls;
+    controls = rhs.controls;
     counter = rhs.counter;
     if (rhs.tile->animation_tiles.size()) {
-      switch (rhs.animation_controls.direction) {
-      case AnimationControls::Direction::Normal:
+      switch (rhs.controls.direction) {
+      case Controls::Direction::Normal:
         iterator.normal = rhs.iterator.normal;
         break;
-      case AnimationControls::Direction::Reverse:
+      case Controls::Direction::Reverse:
         iterator.reverse = rhs.iterator.reverse;
         break;
       }
@@ -172,15 +172,15 @@ namespace ultra {
 
   AnimatedSprite::Animation AnimatedSprite::Animation::set(
     Hash name,
-    AnimationControls animation_controls,
+    const Controls& controls,
     bool force_restart
   ) {
     if (!force_restart
         && name == this->name
-        && animation_controls == this->animation_controls) {
+        && controls == this->controls) {
       return *this;
     }
-    return Animation(*tileset, name, animation_controls);
+    return Animation(*tileset, name, controls);
   }
 
   template <typename T>
@@ -190,10 +190,10 @@ namespace ultra {
     T begin,
     T end
   ) {
-    uint32_t duration = animation.animation_controls.speed * iterator->duration;
+    uint32_t duration = animation.controls.speed * iterator->duration;
     if (animation.counter++ == duration) {
       if (std::next(iterator) == end) {
-        if (animation.animation_controls.loop) {
+        if (animation.controls.loop) {
           iterator = begin;
         } else {
           animation.playing = false;
@@ -208,8 +208,8 @@ namespace ultra {
   AnimatedSprite::Animation AnimatedSprite::Animation::update() {
     Animation next(*this);
     if (playing && tile->animation_tiles.size()) {
-      switch (animation_controls.direction) {
-      case AnimationControls::Direction::Normal:
+      switch (controls.direction) {
+      case Controls::Direction::Normal:
         advance(
           next,
           next.iterator.normal,
@@ -217,7 +217,7 @@ namespace ultra {
           next.tile->animation_tiles.cend()
         );
         break;
-      case AnimationControls::Direction::Reverse:
+      case Controls::Direction::Reverse:
         advance(
           next,
           next.iterator.reverse,
@@ -232,10 +232,10 @@ namespace ultra {
 
   uint16_t AnimatedSprite::Animation::get_tile_index() const {
     if (tile->animation_tiles.size()) {
-      switch (animation_controls.direction) {
-      case AnimationControls::Direction::Normal:
+      switch (controls.direction) {
+      case Controls::Direction::Normal:
         return iterator.normal->tile_index;
-      case AnimationControls::Direction::Reverse:
+      case Controls::Direction::Reverse:
         return iterator.reverse->tile_index;
       }
     }
@@ -244,10 +244,10 @@ namespace ultra {
 
   void AnimatedSprite::animate(
     Hash name,
-    AnimationControls animation_controls,
+    const Controls& controls,
     bool force_restart
   ) {
-    animation = animation.set(name, animation_controls, force_restart);
+    animation = animation.set(name, controls, force_restart);
     tile_index = animation.get_tile_index();
   }
 
