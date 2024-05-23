@@ -14,23 +14,23 @@ namespace ultra {
     /** Sprite constructor. */
     Sprite(
       const Tileset& tileset,
+      uint16_t tile_index,
       const geometry::Vector<float>& position,
       Tileset::Attributes attributes,
-      uint16_t tile_index,
       float transform[9] = nullptr
     );
 
     /** The tileset associated with this sprite. */
     const Tileset& tileset;
 
+    /** Tile index used for rendering. */
+    uint16_t tile_index;
+
     /** The sprite world position. */
     geometry::Vector<float> position;
 
     /** The sprite attributes. */
     Tileset::Attributes attributes;
-
-    /** Tile index used for rendering. */
-    uint16_t tile_index;
 
     /**
      * Transformation matrix used for rendering.

@@ -27,17 +27,11 @@ namespace ultra {
 
       } direction;
 
-      /** Name of target animation. */
-      Hash name;
-
       /** Animation speed multiplier. */
       float speed;
 
       /** Instance constructor. */
       AnimationControls();
-
-      /** Instance constructor with default controls. */
-      AnimationControls(Hash name);
 
       /** Instance compare operator. */
       bool operator==(const AnimationControls& rhs) const;
@@ -46,7 +40,6 @@ namespace ultra {
       class Builder {
 
         struct {
-          Hash name;
           bool loop;
           Direction direction;
           float speed;
@@ -81,11 +74,17 @@ namespace ultra {
       /** Shorthand for Tileset's AnimationTile. */
       using AnimationTile = Tileset::Tile::AnimationTile;
 
+      /** Static tile index constructor. */
+      Animation(
+        const ultra::Tileset& tileset,
+        uint16_t tile_index
+      );
+
       /** Animation set constructor. */
       Animation(
         const ultra::Tileset& tileset,
-        uint16_t tile_index,
-        AnimationControls animation_controls
+        Hash name,
+        const AnimationControls& animation_controls
       );
 
       /** Copy constructor. */
@@ -100,6 +99,7 @@ namespace ultra {
        * specified.
        */
       Animation set(
+        Hash name,
         AnimationControls controls,
         bool force_restart
       );
@@ -111,6 +111,9 @@ namespace ultra {
        * Get the current tile index of the animation.
        */
       uint16_t get_tile_index() const;
+
+      /** Name of the animation. */
+      Hash name;
 
       /** True if current animation is playing. */
       bool playing;
@@ -136,12 +139,22 @@ namespace ultra {
       } iterator;
     };
 
-    /** Instance constructor. */
+    /** Animation constructor. */
     AnimatedSprite(
       const Tileset& tileset,
+      Hash name,
+      const AnimationControls& animation_controls,
       const geometry::Vector<float>& position,
       Tileset::Attributes attributes,
+      float transform[9] = nullptr
+    );
+
+    /** Tileset constructor. */
+    AnimatedSprite(
+      const Tileset& tileset,
       uint16_t tile_index,
+      const geometry::Vector<float>& position,
+      const Tileset::Attributes& attributes,
       float transform[9] = nullptr
     );
 
@@ -150,6 +163,7 @@ namespace ultra {
      * is the current animation unless specified.
      */
     void animate(
+      Hash name,
       AnimationControls controls,
       bool force_restart = false
     );

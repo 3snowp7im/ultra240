@@ -4,39 +4,24 @@
 namespace ultra {
 
   AnimatedSprite::AnimationControls::AnimationControls()
-    : name(0),
-      loop(false),
-      direction(Direction::Normal),
-      speed(1) {}
-
-  AnimatedSprite::AnimationControls::AnimationControls(Hash name)
-    : name(name),
-      loop(true),
+    : loop(true),
       direction(Direction::Normal),
       speed(1) {}
 
   bool AnimatedSprite::AnimationControls::operator==(
     const AnimationControls& rhs
   ) const {
-    return name == rhs.name
-      && loop == rhs.loop
+    return loop == rhs.loop
       && direction == rhs.direction
       && speed == rhs.speed;
   }
 
   AnimatedSprite::AnimationControls::Builder::Builder()
     : value({
-        .name = 0,
         .loop = false,
         .direction = Direction::Normal,
         .speed = 1,
       }) {}
-
-  AnimatedSprite::AnimationControls::Builder&
-  AnimatedSprite::AnimationControls::Builder::name(Hash name) {
-    value.name = name;
-    return *this;
-  }
 
   AnimatedSprite::AnimationControls::Builder&
   AnimatedSprite::AnimationControls::Builder::loop() {
@@ -59,7 +44,6 @@ namespace ultra {
   AnimatedSprite::AnimationControls
   AnimatedSprite::AnimationControls::Builder::build() const {
     AnimationControls animation_controls;
-    animation_controls.name = value.name;
     animation_controls.loop = value.loop;
     animation_controls.direction = value.direction;
     animation_controls.speed = value.speed;
@@ -68,54 +52,92 @@ namespace ultra {
 
   AnimatedSprite::AnimatedSprite(
     const Tileset& tileset,
+    Hash name,
+    const AnimationControls& animation_controls,
     const geometry::Vector<float>& position,
     Tileset::Attributes attributes,
-    uint16_t tile_index,
     float transform[9]
-  ) : animation(
+  ) : animation(tileset, name, animation_controls),
+      ultra::Sprite(
+        tileset,
+        tileset.get_tile_index_by_name(name),
+        position,
+        attributes,
+        transform
+      ) {}
+
+  AnimatedSprite::AnimatedSprite(
+    const Tileset& tileset,
+    uint16_t tile_index,
+    const geometry::Vector<float>& position,
+    const Tileset::Attributes& attributes,
+    float transform[9]
+  ) : animation(tileset, tile_index),
+      ultra::Sprite(
         tileset,
         tile_index,
-        ultra::AnimatedSprite::AnimationControls()
-      ),
-      ultra::Sprite(tileset, position, attributes, tile_index, transform) {}
+        position,
+        attributes,
+        transform
+      ) {}
 
-  AnimatedSprite::Animation::Animation(
-    const ultra::Tileset& tileset,
-    uint16_t tile_index,
-    AnimationControls animation_controls
-  ) : tileset(&tileset),
-      tile(&tileset.tiles[tile_index]),
-      animation_controls(animation_controls),
-      counter(0) {
-    if (tile->animation_tiles.size()) {
-      playing = true;
-      switch (animation_controls.direction) {
-      case AnimationControls::Direction::Normal:
-        iterator.normal = tile->animation_tiles.cbegin();
+  static void animation_construct(
+    AnimatedSprite::Animation& animation,
+    uint16_t tile_index
+  ) {
+    if (animation.tile->animation_tiles.size()) {
+      animation.playing = true;
+      switch (animation.animation_controls.direction) {
+      case AnimatedSprite::AnimationControls::Direction::Normal:
+        animation.iterator.normal = animation.tile->animation_tiles.cbegin();
         break;
-      case AnimationControls::Direction::Reverse:
-        iterator.reverse = tile->animation_tiles.crbegin();
+      case AnimatedSprite::AnimationControls::Direction::Reverse:
+        animation.iterator.reverse = animation.tile->animation_tiles.crbegin();
         break;
       }
     } else {
-      playing = false;
-      iterator.tile_index = tile_index;
+      animation.playing = false;
+      animation.iterator.tile_index = tile_index;
     }
   }
 
   AnimatedSprite::Animation::Animation(
+    const ultra::Tileset& tileset,
+    Hash name,
+    const AnimatedSprite::AnimationControls& animation_controls
+  ) : name(name),
+      tileset(&tileset),
+      animation_controls(animation_controls),
+      counter(0) {
+    uint16_t tile_index = tileset.get_tile_index_by_name(name);
+    tile = &tileset.tiles[tile_index];
+    animation_construct(*this, tile_index);
+  }
+
+  AnimatedSprite::Animation::Animation(
+    const ultra::Tileset& tileset,
+    uint16_t tile_index
+  ) : name(0),
+      tileset(&tileset),
+      counter(0) {
+    tile = &tileset.tiles[tile_index];
+    animation_construct(*this, tile_index);
+  }
+
+  AnimatedSprite::Animation::Animation(
     const Animation& animation
-  ) : playing(animation.playing),
+  ) : name(animation.name),
       tileset(animation.tileset),
-      tile(animation.tile),
       animation_controls(animation.animation_controls),
-      counter(animation.counter) {
-    if (tile->animation_tiles.size()) {
+      counter(animation.counter),
+      tile(animation.tile),
+      playing(animation.playing) {
+    if (animation.tile->animation_tiles.size()) {
       switch (animation.animation_controls.direction) {
-      case AnimationControls::Direction::Normal:
+      case AnimatedSprite::AnimationControls::Direction::Normal:
         iterator.normal = animation.iterator.normal;
         break;
-      case AnimationControls::Direction::Reverse:
+      case AnimatedSprite::AnimationControls::Direction::Reverse:
         iterator.reverse = animation.iterator.reverse;
         break;
       }
@@ -127,12 +149,13 @@ namespace ultra {
   AnimatedSprite::Animation& AnimatedSprite::Animation::operator=(
     const Animation& rhs
   ) {
+    name = rhs.name;
     playing = rhs.playing;
     tileset = rhs.tileset;
     tile = rhs.tile;
     animation_controls = rhs.animation_controls;
     counter = rhs.counter;
-    if (tile->animation_tiles.size()) {
+    if (rhs.tile->animation_tiles.size()) {
       switch (rhs.animation_controls.direction) {
       case AnimationControls::Direction::Normal:
         iterator.normal = rhs.iterator.normal;
@@ -148,18 +171,16 @@ namespace ultra {
   }
 
   AnimatedSprite::Animation AnimatedSprite::Animation::set(
+    Hash name,
     AnimationControls animation_controls,
     bool force_restart
   ) {
-    if (!force_restart && animation_controls == this->animation_controls) {
+    if (!force_restart
+        && name == this->name
+        && animation_controls == this->animation_controls) {
       return *this;
     }
-    auto tile_index = tileset->get_tile_index_by_name(animation_controls.name);
-    return Animation(
-      *tileset,
-      tile_index,
-      animation_controls
-    );
+    return Animation(*tileset, name, animation_controls);
   }
 
   template <typename T>
@@ -169,7 +190,8 @@ namespace ultra {
     T begin,
     T end
   ) {
-    if (animation.counter++ == iterator->duration) {
+    uint32_t duration = animation.animation_controls.speed * iterator->duration;
+    if (animation.counter++ == duration) {
       if (std::next(iterator) == end) {
         if (animation.animation_controls.loop) {
           iterator = begin;
@@ -221,10 +243,11 @@ namespace ultra {
   }
 
   void AnimatedSprite::animate(
+    Hash name,
     AnimationControls animation_controls,
     bool force_restart
   ) {
-    animation = animation.set(animation_controls, force_restart);
+    animation = animation.set(name, animation_controls, force_restart);
     tile_index = animation.get_tile_index();
   }
 
