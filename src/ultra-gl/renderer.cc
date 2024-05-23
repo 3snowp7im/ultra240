@@ -11,11 +11,6 @@
 #include "ultra/ultra.h"
 #include "mat4.c"
 
-namespace ultra::renderer::shader {
-#include "shader/vert.c"
-#include "shader/frag.c"
-}
-
 static const char* glEnumName(GLenum _enum) {
 #define GLENUM(_ty) case _ty: return #_ty
   switch (_enum) {

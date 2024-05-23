@@ -1,11 +1,3 @@
-SHADER_SOURCES = \
-	shader/vert.c \
-	shader/frag.c
-
-BUILT_SOURCES = $(SHADER_SOURCES)
-
-CLEANFILES = $(SHADER_SOURCES)
-
 lib_LTLIBRARIES = libultra-gl.la
 libultra_gl_la_SOURCES = \
 	renderer.cc \
@@ -13,7 +5,3 @@ libultra_gl_la_SOURCES = \
 libultra_gl_la_CXXFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/include
-
-SUFFIXES: .vsc .fsc
-.vsc.c .fsc.c:
-	xxd -i $^ | sed 's/ [^ ]*shader_\(.*\) / shader_\1 /g' > $@
